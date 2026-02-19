@@ -17,6 +17,14 @@ export interface IConfig {
     name: string;
     migrateData: boolean;
   };
+  email: {
+    host: string;
+    port: number;
+    user: string;
+    password: string;
+    fromName: string;
+    secure: boolean;
+  };
 }
 
 /**
@@ -59,6 +67,16 @@ export const config: IConfig = {
     password: process.env.DB_PASSWORD || '',
     name: process.env.DB_NAME || '',
     migrateData: process.env.DB_MIGRATE_DATA === 'true',
+  },
+
+  // Email
+  email: {
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.EMAIL_PORT || '587', 10),
+    user: process.env.EMAIL_USER || '',
+    password: process.env.EMAIL_PASSWORD || '',
+    fromName: process.env.EMAIL_FROM_NAME || 'Biotasys',
+    secure: process.env.EMAIL_SECURE === 'true',
   },
 };
 

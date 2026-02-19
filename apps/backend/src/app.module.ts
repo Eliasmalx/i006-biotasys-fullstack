@@ -4,10 +4,16 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { EmailModule } from './infrastructure/email/email.module';
 import { winstonConfig } from './config/winston.config';
 
 @Module({
-  imports: [WinstonModule.forRoot(winstonConfig), AuthModule, UsersModule],
+  imports: [
+    WinstonModule.forRoot(winstonConfig),
+    AuthModule,
+    UsersModule,
+    EmailModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
