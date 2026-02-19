@@ -4,18 +4,18 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-} from "typeorm";
-import { OrgStatus } from "../../../common/enums/org-status.enum";
+} from 'typeorm';
+import { OrgStatus } from '../../../common/enums/org-status.enum';
 
-@Entity("organizations")
+@Entity('organizations')
 export class Organization {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column()
   name: string;
 
-  @Column({ type: "enum", enum: OrgStatus, default: OrgStatus.ACTIVE })
+  @Column({ type: 'enum', enum: OrgStatus, default: OrgStatus.ACTIVE })
   status: OrgStatus;
 
   @CreateDateColumn()

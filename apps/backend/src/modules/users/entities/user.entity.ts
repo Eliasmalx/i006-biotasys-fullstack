@@ -4,13 +4,13 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-} from "typeorm";
-import { Role } from "../../../common/enums/role.enum";
-import { UserStatus } from "../../../common/enums/user-status.enum";
+} from 'typeorm';
+import { Role } from '../../../common/enums/role.enum';
+import { UserStatus } from '../../../common/enums/user-status.enum';
 
-@Entity("users")
+@Entity('users')
 export class User {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ unique: true })
@@ -22,13 +22,13 @@ export class User {
   @Column()
   passwordHash: string;
 
-  @Column({ type: "enum", enum: Role })
+  @Column({ type: 'enum', enum: Role })
   role: Role;
 
-  @Column({ type: "uuid", nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   organizationId?: string;
 
-  @Column({ type: "enum", enum: UserStatus, default: UserStatus.ACTIVE })
+  @Column({ type: 'enum', enum: UserStatus, default: UserStatus.ACTIVE })
   status: UserStatus;
 
   @CreateDateColumn()
