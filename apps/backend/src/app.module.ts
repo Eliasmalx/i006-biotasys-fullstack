@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { EmailModule } from './infrastructure/email/email.module';
 import { winstonConfig } from './config/winston.config';
 import { InvitationsModule } from './modules/invitations/invitations.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
@@ -13,6 +14,7 @@ import { OrganizationsModule } from './modules/organizations/organizations.modul
     WinstonModule.forRoot(winstonConfig),
     AuthModule,
     UsersModule,
+    EmailModule,
     InvitationsModule,
     OrganizationsModule,
   ],
