@@ -1,10 +1,15 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeorm";
-import { Role } from "../../../common/enums/role.enum";
-import { InvitationStatus } from "../../../common/enums/invitation-status.enum";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { Role } from '../../../common/enums/role.enum';
+import { InvitationStatus } from '../../../common/enums/invitation-status.enum';
 
-@Entity("invitations")
+@Entity('invitations')
 export class Invitation {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column()
@@ -13,22 +18,26 @@ export class Invitation {
   @Column()
   email: string;
 
-  @Column({ type: "enum", enum: Role })
+  @Column({ type: 'enum', enum: Role })
   role: Role;
 
-  @Column({ type: "uuid" })
+  @Column({ type: 'uuid' })
   organizationId: string;
 
-  @Column({ type: "uuid" })
+  @Column({ type: 'uuid' })
   invitedByUserId: string;
 
-  @Column({ type: "enum", enum: InvitationStatus, default: InvitationStatus.PENDING })
+  @Column({
+    type: 'enum',
+    enum: InvitationStatus,
+    default: InvitationStatus.PENDING,
+  })
   status: InvitationStatus;
 
-  @Column({ type: "timestamptz" })
+  @Column({ type: 'timestamptz' })
   expiresAt: Date;
 
-  @Column({ type: "timestamptz", nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   acceptedAt?: Date;
 
   @CreateDateColumn()
