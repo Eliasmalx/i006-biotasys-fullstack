@@ -6,6 +6,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { EmailModule } from './infrastructure/email/email.module';
 import { winstonConfig } from './config/winston.config';
+import { InvitationsModule } from './modules/invitations/invitations.module';
+import { OrganizationsModule } from './modules/organizations/organizations.module';
 
 @Module({
   imports: [
@@ -13,6 +15,8 @@ import { winstonConfig } from './config/winston.config';
     AuthModule,
     UsersModule,
     EmailModule,
+    InvitationsModule,
+    OrganizationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
