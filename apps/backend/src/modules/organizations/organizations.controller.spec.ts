@@ -9,6 +9,7 @@ const serviceMock = {
   create: jest.fn(),
   update: jest.fn(),
   findAll: jest.fn(),
+  findOne: jest.fn(),
 };
 
 describe('OrganizationsController', () => {
@@ -81,5 +82,11 @@ describe('OrganizationsController', () => {
 
     expect(serviceMock.findAll).toHaveBeenCalledTimes(1);
     expect(result).toEqual(rows);
+  });
+
+  it('findOne: should call service.findOne', async () => {
+    serviceMock.findOne.mockResolvedValue({ id: 'uuid' });
+    await controller.findOne('uuid');
+    expect(serviceMock.findOne).toHaveBeenCalledWith('uuid');
   });
 });

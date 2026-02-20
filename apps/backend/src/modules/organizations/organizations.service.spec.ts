@@ -22,6 +22,7 @@ const repoMock: OrgRepoMock = {
 describe('OrganizationsService', () => {
   let service: OrganizationsService;
   let repo: OrgRepoMock;
+  let existingOrg: Organization;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -30,6 +31,17 @@ describe('OrganizationsService', () => {
         { provide: getRepositoryToken(Organization), useValue: repoMock },
       ],
     }).compile();
+
+    const now = new Date();
+
+    existingOrg = {
+      id: 'uuid',
+      name: 'Old',
+      status: OrgStatus.ACTIVE,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: '22222222-2222-2222-2222-222222222222',
+    };
 
     service = module.get(OrganizationsService);
     repo = module.get(getRepositoryToken(Organization));
@@ -115,5 +127,14 @@ describe('OrganizationsService', () => {
 
     expect(repo.find).toHaveBeenCalledTimes(1);
     expect(result).toBe(rows);
+  });
+  it('findOne: should return org if found', async () => {
+    repo.findOneBy.mockResolvedValue(existingOrg);
+    await expect(service.findOne('uuid')).resolves.toBe(existingOrg);
+  });
+
+  it('findOne: should throw NotFound if missing', async () => {
+    repo.findOneBy.mockResolvedValue(null);
+    await expect(service.findOne('uuid')).rejects.toThrow(NotFoundException);
   });
 });
