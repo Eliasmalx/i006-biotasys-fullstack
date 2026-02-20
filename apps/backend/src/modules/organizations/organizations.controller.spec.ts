@@ -8,6 +8,7 @@ import { OrgStatus } from '../../common/enums/org-status.enum';
 const serviceMock = {
   create: jest.fn(),
   update: jest.fn(),
+  findAll: jest.fn(),
 };
 
 describe('OrganizationsController', () => {
@@ -70,5 +71,15 @@ describe('OrganizationsController', () => {
 
     expect(serviceMock.update).toHaveBeenCalledWith(id, dto);
     expect(result).toEqual(saved);
+  });
+
+  it('findAll: should call service.findAll', async () => {
+    const rows = [{ id: 'uuid' }];
+    serviceMock.findAll.mockResolvedValue(rows);
+
+    const result = await controller.findAll();
+
+    expect(serviceMock.findAll).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(rows);
   });
 });

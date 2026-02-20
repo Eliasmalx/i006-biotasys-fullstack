@@ -9,13 +9,14 @@ import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 
 type OrgRepoMock = jest.Mocked<
-  Pick<Repository<Organization>, 'create' | 'save' | 'findOneBy'>
+  Pick<Repository<Organization>, 'create' | 'save' | 'findOneBy' | 'find'>
 >;
 
 const repoMock: OrgRepoMock = {
   create: jest.fn(),
   save: jest.fn(),
   findOneBy: jest.fn(),
+  find: jest.fn(),
 };
 
 describe('OrganizationsService', () => {
@@ -47,6 +48,7 @@ describe('OrganizationsService', () => {
       status: OrgStatus.ACTIVE,
       createdAt: now,
       updatedAt: now,
+      createdBy: '22222222-2222-2222-2222-222222222222',
     };
 
     const saved: Organization = {
@@ -83,6 +85,7 @@ describe('OrganizationsService', () => {
       status: OrgStatus.ACTIVE,
       createdAt: now,
       updatedAt: now,
+      createdBy: '22222222-2222-2222-2222-222222222222',
     };
 
     const saved: Organization = {
@@ -102,5 +105,15 @@ describe('OrganizationsService', () => {
       expect.objectContaining({ name: 'New' }),
     );
     expect(result).toEqual(saved);
+  });
+
+  it('findAll: should call repo.find and return result', async () => {
+    const rows = [{ id: 'uuid' }] as any[];
+    repo.find.mockResolvedValue(rows);
+
+    const result = await service.findAll();
+
+    expect(repo.find).toHaveBeenCalledTimes(1);
+    expect(result).toBe(rows);
   });
 });

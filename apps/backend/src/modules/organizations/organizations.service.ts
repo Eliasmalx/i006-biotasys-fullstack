@@ -16,6 +16,9 @@ export class OrganizationsService {
     const org = this.orgRepo.create(dto);
     return this.orgRepo.save(org);
   }
+  findAll() {
+    return this.orgRepo.find();
+  }
 
   async update(id: string, dto: UpdateOrganizationDto) {
     const org = await this.orgRepo.findOneBy({ id });

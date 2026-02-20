@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Param,
+  Get,
   Patch,
   Post,
   UseGuards,
@@ -32,5 +33,9 @@ export class OrganizationsController {
     @Body() dto: UpdateOrganizationDto,
   ) {
     return this.organizationsService.update(id, dto);
+  }
+  @Get()
+  findAll() {
+    return this.organizationsService.findAll();
   }
 }
