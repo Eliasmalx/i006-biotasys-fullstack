@@ -1,62 +1,71 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
-import type { Request } from 'express';
-import { JwtAuthGuard } from '../../common/guards/jwt-guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '../../common/enums/role.enum';
-type ReqWithUser = Request & { user?: unknown };
+import { LoginDto } from './dto/login.dto';
+import { AcceptInvitationDto } from '../users/dto/accept-invitation.dto';
 
+interface LoginResponse {
+  accessToken: string;
+  user: {
+    id: string;
+    email: string;
+    fullName: string;
+    role: string;
+    organizationId?: string;
+  };
+}
+
+/**
+ * Controlador de autenticación
+ * Rutas:
+ * - POST /api/auth/login - Login con email y contraseña
+ * - POST /api/auth/accept-invitation - Aceptar invitación y registrarse
+ */
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post()
-  create(@Body() createAuthDto: CreateAuthDto) {
-    return this.authService.create(createAuthDto);
+  /**
+   * Login con email y contraseña
+   * Retorna JWT para usar en requests posteriores
+   *
+   * @param loginDto Email y contraseña
+   * @returns {accessToken, user}
+   *
+   * @example
+   * POST /api/auth/login
+   * Content-Type: application/json
+   * {
+   *   "email": "superadmin@example.com",
+   *   "password": "password123"
+   * }
+   */
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  async login(@Body() loginDto: LoginDto): Promise<LoginResponse> {
+    return this.authService.login(loginDto);
   }
 
-  @Get()
-  findAll() {
-    return this.authService.findAll();
-  }
-  @UseGuards(JwtAuthGuard)
-  @Get('me')
-  me(@Req() req: ReqWithUser) {
-    return req.user;
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  @Get('admin-ping')
-  adminPing() {
-    return { ok: true };
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.authService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAuthDto: UpdateAuthDto) {
-    return this.authService.update(+id, updateAuthDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.authService.remove(+id);
+  /**
+   * Aceptar invitación y crear usuario (admin, professional, lab_operator)
+   * El token viene en el email de invitación
+   *
+   * @param dto Token, nombre completo y contraseña
+   * @returns {accessToken, user}
+   *
+   * @example
+   * POST /api/auth/accept-invitation
+   * Content-Type: application/json
+   * {
+   *   "token": "64characterlonghextoken...",
+   *   "fullName": "Juan Pérez",
+   *   "password": "securePassword123"
+   * }
+   */
+  @Post('accept-invitation')
+  @HttpCode(HttpStatus.CREATED)
+  async acceptInvitation(
+    @Body() dto: AcceptInvitationDto,
+  ): Promise<LoginResponse> {
+    return this.authService.acceptInvitation(dto);
   }
 }

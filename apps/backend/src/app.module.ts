@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { EmailModule } from './infrastructure/email/email.module';
+import { DevModule } from './dev/dev.module';
 import { winstonConfig } from './config/winston.config';
 import { ormConfig } from './config/orm.config';
 import { InvitationsModule } from './modules/invitations/invitations.module';
@@ -20,6 +21,7 @@ import { OrganizationsModule } from './modules/organizations/organizations.modul
     EmailModule,
     InvitationsModule,
     OrganizationsModule,
+    DevModule,
   ],
   controllers: [AppController],
   providers: [AppService],
