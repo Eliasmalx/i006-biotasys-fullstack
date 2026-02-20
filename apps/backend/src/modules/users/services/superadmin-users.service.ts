@@ -102,7 +102,7 @@ export class SuperadminUsersService {
 
     // Generar token de invitación
     const token = crypto.randomBytes(32).toString('hex');
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const tokenHash = await bcrypt.hash(token, this.saltRounds);
 
     // Crear invitación
@@ -110,7 +110,6 @@ export class SuperadminUsersService {
     expiresAt.setDate(expiresAt.getDate() + this.invitationExpiryDays);
 
     const invitation = this.invitationRepository.create({
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       tokenHash,
       email: normalizedEmail,
       role: Role.ADMIN,
@@ -302,14 +301,14 @@ export class SuperadminUsersService {
     }
 
     // Hashear contraseña
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const passwordHash = await bcrypt.hash(password, this.saltRounds);
 
     // Crear usuario admin
     const user = this.userRepository.create({
       email: validInvitation.email,
       fullName: fullName.trim(),
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
       passwordHash,
       role: Role.ADMIN,
       organizationId: validInvitation.organizationId,
