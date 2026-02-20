@@ -6,7 +6,7 @@ import { DevController } from './dev.controller';
 /**
  * ⚠️ MÓDULO SOLO PARA DESARROLLO
  * Proporciona endpoints útiles para testing y setup local
- * 
+ *
  * IMPORTANTE: No debe ser usado en producción
  */
 @Module({
