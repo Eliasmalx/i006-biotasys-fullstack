@@ -4,36 +4,48 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Index,
 } from 'typeorm';
 import { Role } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 
 @Entity('users')
+@Index(['email'], { unique: true })
+@Index(['organizationId'])
+@Index(['role'])
 export class User {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ unique: true })
-  email: string;
+  email!: string;
 
   @Column()
-  fullName: string;
+  fullName!: string;
 
   @Column()
-  passwordHash: string;
+  passwordHash!: string;
 
   @Column({ type: 'enum', enum: Role })
-  role: Role;
+  role!: Role;
 
   @Column({ type: 'uuid', nullable: true })
   organizationId?: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  invitationId?: string;
+
   @Column({ type: 'enum', enum: UserStatus, default: UserStatus.ACTIVE })
-  status: UserStatus;
+  status!: UserStatus;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastLoginAt?: Date;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 }

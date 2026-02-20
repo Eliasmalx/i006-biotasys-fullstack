@@ -4,19 +4,18 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { Auth } from './entities/auth.entity';
+import { User } from '../users/entities/user.entity';
+import { Invitation } from '../invitations/entities/invitation.entity';
 import { JwtStrategy } from '../../common/guards/jwt-guards';
-import { UsersModule } from '../users/users.module';
 import config from '../../config/dotenv.config';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Auth]),
+    TypeOrmModule.forFeature([User, Invitation]),
     PassportModule,
-    UsersModule,
     JwtModule.register({
       secret: config.jwtSecret,
-      signOptions: { expiresIn: parseInt(config.jwtExpiresIn, 10) },
+      signOptions: { expiresIn: config.jwtExpiresIn },
     }),
   ],
   controllers: [AuthController],

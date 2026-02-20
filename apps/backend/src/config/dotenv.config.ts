@@ -2,13 +2,37 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
+/**
+ * Convierte duraciones en formato string (ej: '7d', '1h', '60s') a segundos
+ * @param duration Ejemplo: '7d' (7 días), '1h' (1 hora), '60s' (60 segundos)
+ * @returns Duración en segundos
+ */
+function parseDurationToSeconds(duration: string): number {
+  if (!duration) return 3600; // default 1 hora
+
+  const match = duration.match(/^(\d+)([smhd])$/i);
+  if (!match) return 3600; // default 1 hora si no matches
+
+  const [, value, unit] = match;
+  const num = parseInt(value, 10);
+
+  const multipliers: Record<string, number> = {
+    s: 1,
+    m: 60,
+    h: 60 * 60,
+    d: 60 * 60 * 24,
+  };
+
+  return num * (multipliers[unit.toLowerCase()] || 1);
+}
+
 export interface IConfig {
   port: number;
   nodeEnv: 'development' | 'production' | 'test';
   frontendUrl: string;
   jwtSecret: string;
-  jwtExpiresIn: string;
-  refreshTokenExpiresIn: string;
+  jwtExpiresIn: number;
+  refreshTokenExpiresIn: number;
   db: {
     port: number;
     host: string;
@@ -16,6 +40,7 @@ export interface IConfig {
     password: string;
     name: string;
     migrateData: boolean;
+    logQueries: boolean;
   };
   email: {
     host: string;
@@ -47,6 +72,12 @@ if (process.env.NODE_ENV === 'production') {
   validateConfig();
 }
 
+const dbLogQueriesEnv = process.env.DB_LOG_QUERIES;
+const dbLogQueries =
+  typeof dbLogQueriesEnv === 'string'
+    ? dbLogQueriesEnv === 'true'
+    : process.env.NODE_ENV !== 'production';
+
 export const config: IConfig = {
   // Server
   port: parseInt(process.env.PORT || '3000', 10),
@@ -56,8 +87,8 @@ export const config: IConfig = {
 
   // JWT
   jwtSecret: process.env.JWT_SECRET || 'default-secret',
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1h',
-  refreshTokenExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '14d',
+  jwtExpiresIn: parseDurationToSeconds(process.env.JWT_EXPIRES_IN || '1h'),
+  refreshTokenExpiresIn: parseDurationToSeconds(process.env.REFRESH_TOKEN_EXPIRES_IN || '14d'),
 
   // Database
   db: {
@@ -67,6 +98,7 @@ export const config: IConfig = {
     password: process.env.DB_PASSWORD || '',
     name: process.env.DB_NAME || '',
     migrateData: process.env.DB_MIGRATE_DATA === 'true',
+    logQueries: dbLogQueries,
   },
 
   // Email

@@ -22,7 +22,7 @@ export class InvitationsService {
 
     const invitation = this.invitationsRepo.create({
       ...dto,
-      invitedByUserId,
+      invitedBy: invitedByUserId,
       tokenHash,
       expiresAt,
     });
