@@ -10,6 +10,7 @@ const serviceMock = {
   update: jest.fn(),
   findAll: jest.fn(),
   findOne: jest.fn(),
+  remove: jest.fn(),
 };
 
 describe('OrganizationsController', () => {
@@ -88,5 +89,11 @@ describe('OrganizationsController', () => {
     serviceMock.findOne.mockResolvedValue({ id: 'uuid' });
     await controller.findOne('uuid');
     expect(serviceMock.findOne).toHaveBeenCalledWith('uuid');
+  });
+
+  it('remove: should call service.remove', async () => {
+    serviceMock.remove.mockResolvedValue(undefined);
+    await controller.remove('uuid');
+    expect(serviceMock.remove).toHaveBeenCalledWith('uuid');
   });
 });

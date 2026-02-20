@@ -7,9 +7,13 @@ import { Repository } from 'typeorm';
 import { OrgStatus } from '../../common/enums/org-status.enum';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
+import { DeleteResult } from 'typeorm';
 
 type OrgRepoMock = jest.Mocked<
-  Pick<Repository<Organization>, 'create' | 'save' | 'findOneBy' | 'find'>
+  Pick<
+    Repository<Organization>,
+    'create' | 'save' | 'findOneBy' | 'find' | 'delete'
+  >
 >;
 
 const repoMock: OrgRepoMock = {
@@ -17,6 +21,7 @@ const repoMock: OrgRepoMock = {
   save: jest.fn(),
   findOneBy: jest.fn(),
   find: jest.fn(),
+  delete: jest.fn(),
 };
 
 describe('OrganizationsService', () => {
@@ -136,5 +141,14 @@ describe('OrganizationsService', () => {
   it('findOne: should throw NotFound if missing', async () => {
     repo.findOneBy.mockResolvedValue(null);
     await expect(service.findOne('uuid')).rejects.toThrow(NotFoundException);
+  });
+  it('remove: should delete when org exists', async () => {
+    repo.delete.mockResolvedValue({ affected: 1 } as DeleteResult);
+    await expect(service.remove('uuid')).resolves.toBeUndefined();
+    expect(repo.delete).toHaveBeenCalledWith({ id: 'uuid' });
+  });
+  it('remove: should throw NotFound if missing', async () => {
+    repo.delete.mockResolvedValue({ affected: 0 } as DeleteResult);
+    await expect(service.remove('uuid')).rejects.toThrow(NotFoundException);
   });
 });
