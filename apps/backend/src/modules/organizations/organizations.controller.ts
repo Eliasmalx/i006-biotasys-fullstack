@@ -7,6 +7,8 @@ import {
   Post,
   UseGuards,
   ParseUUIDPipe,
+  Delete,
+  HttpCode,
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
@@ -41,5 +43,10 @@ export class OrganizationsController {
   @Get(':id')
   findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.organizationsService.findOne(id);
+  }
+  @Delete(':id')
+  @HttpCode(204)
+  remove(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.organizationsService.remove(id);
   }
 }

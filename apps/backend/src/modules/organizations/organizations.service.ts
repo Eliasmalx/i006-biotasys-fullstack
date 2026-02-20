@@ -31,4 +31,8 @@ export class OrganizationsService {
     if (!org) throw new NotFoundException('Organization not found');
     return org;
   }
+  async remove(id: string) {
+    const result = await this.orgRepo.delete({ id });
+    if (!result.affected) throw new NotFoundException('Organization not found');
+  }
 }
