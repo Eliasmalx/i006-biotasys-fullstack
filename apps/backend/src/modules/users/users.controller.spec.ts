@@ -1,20 +1,25 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UsersController } from './users.controller';
-import { UsersService } from './users.service';
+import { AdminUsersController } from './controllers/admin-users.controller';
+import { SuperadminUsersController } from './controllers/superadmin-users.controller';
+import { AdminUsersService } from './services/admin-users.service';
+import { SuperadminUsersService } from './services/superadmin-users.service';
 
-describe('UsersController', () => {
-  let controller: UsersController;
-
-  beforeEach(async () => {
+describe('UsersControllers', () => {
+  it('AdminUsersController should be defined', async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [UsersController],
-      providers: [UsersService],
+      controllers: [AdminUsersController],
+      providers: [{ provide: AdminUsersService, useValue: {} }],
     }).compile();
 
-    controller = module.get<UsersController>(UsersController);
+    expect(module.get(AdminUsersController)).toBeDefined();
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
+  it('SuperadminUsersController should be defined', async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [SuperadminUsersController],
+      providers: [{ provide: SuperadminUsersService, useValue: {} }],
+    }).compile();
+
+    expect(module.get(SuperadminUsersController)).toBeDefined();
   });
 });
