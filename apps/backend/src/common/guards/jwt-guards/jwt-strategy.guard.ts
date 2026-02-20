@@ -16,7 +16,6 @@ export interface JwtPayload {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
   ) {
@@ -34,7 +33,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * @throws UnauthorizedException si el usuario no existe o no está activo
    */
   async validate(payload: JwtPayload) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const user = await this.userRepository.findOne({
       where: { id: payload.sub },
     });
@@ -47,7 +45,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     // Este objeto se asigna a req.user
     return {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       userId: user.id,
       email: payload.email,
       role: user.role,
