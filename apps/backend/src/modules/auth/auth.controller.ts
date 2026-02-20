@@ -6,10 +6,18 @@ import {
   Patch,
   Param,
   Delete,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
+import type { Request } from 'express';
+import { JwtAuthGuard } from '../../common/guards/jwt-guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums/role.enum';
+type ReqWithUser = Request & { user?: unknown };
 
 @Controller('auth')
 export class AuthController {
@@ -23,6 +31,18 @@ export class AuthController {
   @Get()
   findAll() {
     return this.authService.findAll();
+  }
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  me(@Req() req: ReqWithUser) {
+    return req.user;
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get('admin-ping')
+  adminPing() {
+    return { ok: true };
   }
 
   @Get(':id')
