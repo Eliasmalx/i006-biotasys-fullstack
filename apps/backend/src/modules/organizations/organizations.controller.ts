@@ -38,4 +38,8 @@ export class OrganizationsController {
   findAll() {
     return this.organizationsService.findAll();
   }
+  @Get(':id')
+  findOne(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.organizationsService.findOne(id);
+  }
 }

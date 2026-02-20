@@ -26,4 +26,9 @@ export class OrganizationsService {
     Object.assign(org, dto);
     return this.orgRepo.save(org);
   }
+  async findOne(id: string) {
+    const org = await this.orgRepo.findOneBy({ id });
+    if (!org) throw new NotFoundException('Organization not found');
+    return org;
+  }
 }
