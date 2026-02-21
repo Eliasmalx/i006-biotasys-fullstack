@@ -16,11 +16,23 @@ export class OrganizationsService {
     const org = this.orgRepo.create(dto);
     return this.orgRepo.save(org);
   }
+  findAll() {
+    return this.orgRepo.find();
+  }
 
   async update(id: string, dto: UpdateOrganizationDto) {
     const org = await this.orgRepo.findOneBy({ id });
     if (!org) throw new NotFoundException('Organization not found');
     Object.assign(org, dto);
     return this.orgRepo.save(org);
+  }
+  async findOne(id: string) {
+    const org = await this.orgRepo.findOneBy({ id });
+    if (!org) throw new NotFoundException('Organization not found');
+    return org;
+  }
+  async remove(id: string) {
+    const result = await this.orgRepo.delete({ id });
+    if (!result.affected) throw new NotFoundException('Organization not found');
   }
 }

@@ -88,7 +88,9 @@ export const config: IConfig = {
   // JWT
   jwtSecret: process.env.JWT_SECRET || 'default-secret',
   jwtExpiresIn: parseDurationToSeconds(process.env.JWT_EXPIRES_IN || '1h'),
-  refreshTokenExpiresIn: parseDurationToSeconds(process.env.REFRESH_TOKEN_EXPIRES_IN || '14d'),
+  refreshTokenExpiresIn: parseDurationToSeconds(
+    process.env.REFRESH_TOKEN_EXPIRES_IN || '14d',
+  ),
 
   // Database
   db: {

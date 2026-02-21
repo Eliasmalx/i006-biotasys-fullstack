@@ -74,16 +74,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     // Validar que el usuario está activo
     if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException(
-        'Usuario inactivo - acceso denegado',
-      );
+      throw new UnauthorizedException('Usuario inactivo - acceso denegado');
     }
 
     // Validar que el rol no ha cambiado (seguridad contra cambios de roles sin reautenticación)
     if (payload.role && payload.role !== user.role) {
-      throw new UnauthorizedException(
-        'Rol cambió - por favor reautentícate',
-      );
+      throw new UnauthorizedException('Rol cambió - por favor reautentícate');
     }
 
     // Retorna los datos del usuario autenticado

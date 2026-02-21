@@ -54,7 +54,8 @@ describe('InvitationsService', () => {
       email: dto.email,
       role: dto.role,
       organizationId: dto.organizationId,
-      invitedByUserId,
+      invitedBy: invitedByUserId,
+
       status: InvitationStatus.PENDING,
       expiresAt: new Date(),
       createdAt: new Date(),
@@ -67,7 +68,7 @@ describe('InvitationsService', () => {
       email: string;
       role: Role;
       organizationId: string;
-      invitedByUserId: string;
+      invitedBy: string;
       tokenHash: string;
       expiresAt: Date;
     };
@@ -76,7 +77,7 @@ describe('InvitationsService', () => {
       email: dto.email,
       role: dto.role,
       organizationId: dto.organizationId,
-      invitedByUserId,
+      invitedBy: invitedByUserId,
     });
     expect(createArg.tokenHash).toHaveLength(64);
     expect(createArg.expiresAt).toBeInstanceOf(Date);
@@ -90,7 +91,7 @@ describe('InvitationsService', () => {
       email: saved.email,
       role: saved.role,
       organizationId: saved.organizationId,
-      invitedByUserId: saved.invitedByUserId,
+      invitedBy: saved.invitedBy,
       status: saved.status,
     });
   });
@@ -113,7 +114,7 @@ describe('InvitationsService', () => {
       email: 'a@b.com',
       role: Role.PROFESSIONAL,
       organizationId: '11111111-1111-1111-1111-111111111111',
-      invitedByUserId: '22222222-2222-2222-2222-222222222222',
+      invitedBy: '22222222-2222-2222-2222-222222222222',
       status: InvitationStatus.PENDING,
       expiresAt: new Date(),
       createdAt: new Date(),

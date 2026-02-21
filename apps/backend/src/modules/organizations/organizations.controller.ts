@@ -2,10 +2,13 @@ import {
   Body,
   Controller,
   Param,
+  Get,
   Patch,
   Post,
   UseGuards,
   ParseUUIDPipe,
+  Delete,
+  HttpCode,
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
@@ -32,5 +35,18 @@ export class OrganizationsController {
     @Body() dto: UpdateOrganizationDto,
   ) {
     return this.organizationsService.update(id, dto);
+  }
+  @Get()
+  findAll() {
+    return this.organizationsService.findAll();
+  }
+  @Get(':id')
+  findOne(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.organizationsService.findOne(id);
+  }
+  @Delete(':id')
+  @HttpCode(204)
+  remove(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.organizationsService.remove(id);
   }
 }

@@ -8,6 +8,9 @@ import { OrgStatus } from '../../common/enums/org-status.enum';
 const serviceMock = {
   create: jest.fn(),
   update: jest.fn(),
+  findAll: jest.fn(),
+  findOne: jest.fn(),
+  remove: jest.fn(),
 };
 
 describe('OrganizationsController', () => {
@@ -70,5 +73,27 @@ describe('OrganizationsController', () => {
 
     expect(serviceMock.update).toHaveBeenCalledWith(id, dto);
     expect(result).toEqual(saved);
+  });
+
+  it('findAll: should call service.findAll', async () => {
+    const rows = [{ id: 'uuid' }];
+    serviceMock.findAll.mockResolvedValue(rows);
+
+    const result = await controller.findAll();
+
+    expect(serviceMock.findAll).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(rows);
+  });
+
+  it('findOne: should call service.findOne', async () => {
+    serviceMock.findOne.mockResolvedValue({ id: 'uuid' });
+    await controller.findOne('uuid');
+    expect(serviceMock.findOne).toHaveBeenCalledWith('uuid');
+  });
+
+  it('remove: should call service.remove', async () => {
+    serviceMock.remove.mockResolvedValue(undefined);
+    await controller.remove('uuid');
+    expect(serviceMock.remove).toHaveBeenCalledWith('uuid');
   });
 });
