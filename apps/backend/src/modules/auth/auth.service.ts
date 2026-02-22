@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
   UnauthorizedException,
@@ -10,7 +13,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/entities/user.entity';
 import { LoginDto } from './dto/login.dto';
-import { AcceptInvitationDto } from '../users/dto/accept-invitation.dto';
+import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { UserStatus } from '../../common/enums/user-status.enum';
 import { Invitation } from '../invitations/entities/invitation.entity';
 import { InvitationStatus } from '../../common/enums/invitation-status.enum';

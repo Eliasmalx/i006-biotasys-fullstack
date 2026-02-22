@@ -2,7 +2,7 @@ import { IsString, IsNotEmpty, MinLength, MaxLength } from 'class-validator';
 
 /**
  * DTO para aceptar una invitación y completar el registro
- * POST /api/auth/register/invitation
+ * POST /api/auth/accept-invitation
  */
 export class AcceptInvitationDto {
   @IsString()

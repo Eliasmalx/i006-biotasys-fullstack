@@ -1,42 +1,91 @@
-// import {
-//   Controller,
-//   Get,
-//   Post,
-//   Body,
-//   Patch,
-//   Param,
-//   Delete,
-// } from '@nestjs/common';
-// import { UsersService } from './users.service';
-// import { CreateUserDto } from './dto/create-user.dto';
-// import { UpdateUserDto } from './dto/update-user.dto';
+import {
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  ParseUUIDPipe,
+  Request,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { UsersService } from './users.service';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { JwtAuthGuard } from './../../common/guards/jwt-guards/jwt-auth.guard';
+import { RolesGuard } from './../../common/guards/role-guards/roles.guard';
+import { Roles } from './../../common/decorators/roles.decorator';
+import { Role } from './../../common/enums/role.enum';
 
-// @Controller('users')
-// export class UsersController {
-//   constructor(private readonly usersService: UsersService) {}
+type AuthenticatedRequest = Request & {
+  user?: {
+    userId: string;
+    email: string;
+    role: Role;
+    organizationId?: string;
+  };
+};
 
-//   @Post()
-//   create(@Body() createUserDto: CreateUserDto) {
-//     return this.usersService.create(createUserDto);
-//   }
+/**
+ * UsersController
+ * Scope: /api/users/
+ * Maneja endpoints para profesionales y lab_operators
+ * También maneja CRUD de usuarios por parte de administradores
+ */
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('users')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
 
-//   @Get()
-//   findAll() {
-//     return this.usersService.findAll();
-//   }
+  /**
+   * GET /api/users
+   * Listar usuarios de la organización (ADMIN only)
+   */
+  @Get()
+  @Roles(Role.ADMIN)
+  async listByOrganization(@Request() req: AuthenticatedRequest) {
+    return await this.usersService.listByOrganization(
+      req.user!.organizationId!,
+    );
+  }
 
-//   @Get(':id')
-//   findOne(@Param('id') id: string) {
-//     return this.usersService.findOne(+id);
-//   }
+  /**
+   * GET /api/users/:id
+   * Obtener detalles de un usuario (ADMIN, PROFESSIONAL, LAB_OPERATOR)
+   */
+  @Get(':id')
+  findOne(@Param('id', new ParseUUIDPipe()) id: string) {
+    // TODO: Implementar lógica de obtener usuario
+    // Por ahora solo endpoint existe
+    return { id };
+  }
 
-//   @Patch(':id')
-//   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-//     return this.usersService.update(+id, updateUserDto);
-//   }
+  /**
+   * PATCH /api/users/:id
+   * Actualizar datos de un usuario (ADMIN only)
+   */
+  @Patch(':id')
+  @Roles(Role.ADMIN)
+  async update(
+    @Request() req: AuthenticatedRequest,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateUserDto,
+  ) {
+    return await this.usersService.update(id, req.user!.organizationId!, dto);
+  }
 
-//   @Delete(':id')
-//   remove(@Param('id') id: string) {
-//     return this.usersService.remove(+id);
-//   }
-// }
+  /**
+   * DELETE /api/users/:id
+   * Desactivar un usuario (ADMIN only)
+   */
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deactivate(
+    @Request() req: AuthenticatedRequest,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<void> {
+    await this.usersService.deactivate(id, req.user!.organizationId!);
+  }
+}

@@ -1,7 +1,7 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { AcceptInvitationDto } from '../users/dto/accept-invitation.dto';
+import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 
 interface LoginResponse {
   accessToken: string;

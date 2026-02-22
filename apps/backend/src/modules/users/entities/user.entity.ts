@@ -4,8 +4,6 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
   Index,
 } from 'typeorm';
 import { Role } from '../../../common/enums/role.enum';
