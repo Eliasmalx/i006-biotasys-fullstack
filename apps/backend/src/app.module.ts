@@ -11,6 +11,7 @@ import { winstonConfig } from './config/winston.config';
 import { ormConfig } from './config/orm.config';
 import { InvitationsModule } from './modules/invitations/invitations.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
+import { PatiensModule } from './modules/patients/patients.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { OrganizationsModule } from './modules/organizations/organizations.modul
     InvitationsModule,
     OrganizationsModule,
     DevModule,
+    PatiensModule,
   ],
   controllers: [AppController],
   providers: [AppService],
