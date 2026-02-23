@@ -97,7 +97,7 @@ const Login: React.FC = () => {
             />
 
             <Input
-              label="Password"
+              
               placeholder="Contraseña/Credenciales"
               type="password"
               required
@@ -155,11 +155,11 @@ const Login: React.FC = () => {
     </div>
 
     {/* Columna derecha: Imagen */}
-    <div className="hidden md:flex items-center justify-center p-8">
+    <div className="hidden md:flex items-center justify-center p-0">
       <img
-        src="/ruta-de-tu-imagen.jpg"
+        src="https://images.pexels.com/photos/281260/pexels-photo-281260.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500"
         alt="Login Illustration"
-        className="w-full h-full object-cover rounded-xl opacity-90"
+        className="w-full h-full object-cover opacity-90"
       />
     </div>
 
