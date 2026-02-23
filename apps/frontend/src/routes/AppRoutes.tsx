@@ -5,6 +5,7 @@ import PublicRoute from "./PublicRoute";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
+import { AcceptInvitationPage } from "../pages/AcceptInvitation";
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -34,6 +35,7 @@ export const AppRoutes: React.FC = () => {
         }
       />
       <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/invitations/accept/:token" element={<AcceptInvitationPage />} />
     </Routes>
   );
 };

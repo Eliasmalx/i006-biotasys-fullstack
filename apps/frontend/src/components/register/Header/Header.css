@@ -1,0 +1,84 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 24px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e5f1;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header__logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.header__logo-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.header__logo-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e2a4a;
+  letter-spacing: -0.02em;
+}
+
+.header__right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header__help-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #e2e5f1;
+  background: none;
+  color: #8b92a9;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.header__help-btn:hover {
+  border-color: #8b92a9;
+  color: #5a6484;
+}
+
+.header__lang {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #5a6484;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  transition: background-color 0.15s ease;
+}
+
+.header__lang:hover {
+  background-color: #f7f8fc;
+}
+
+.header__lang-chevron {
+  width: 14px;
+  height: 14px;
+  opacity: 0.5;
+}
