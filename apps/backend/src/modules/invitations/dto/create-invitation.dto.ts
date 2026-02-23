@@ -1,4 +1,10 @@
-import { IsEmail, IsEnum, IsUUID, IsNotEmpty, IsOptional } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsUUID,
+  IsNotEmpty,
+  IsOptional,
+} from 'class-validator';
 import { Role } from '../../../common/enums/role.enum';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 
@@ -9,7 +15,7 @@ import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 export class CreateInvitationDto {
   @ApiProperty({
     example: 'doctor.perez@biotasys.com',
-    description: 'Correo electrónico de la persona invitada'
+    description: 'Correo electrónico de la persona invitada',
   })
   @IsEmail()
   @IsNotEmpty()
@@ -18,7 +24,7 @@ export class CreateInvitationDto {
   @ApiProperty({
     example: 'professional',
     enum: [Role.PROFESSIONAL, Role.LAB_OPERATOR],
-    description: 'Rol que tendrá el usuario (professional o lab_operator)'
+    description: 'Rol que tendrá el usuario (professional o lab_operator)',
   })
   @IsEnum([Role.PROFESSIONAL, Role.LAB_OPERATOR], {
     message: 'El rol debe ser "professional" o "lab_operator"',

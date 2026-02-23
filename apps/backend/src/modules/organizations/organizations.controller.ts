@@ -90,7 +90,9 @@ export class OrganizationsController {
   @Get()
   @Roles(Role.SUPERADMIN)
   @ApiOperation({ summary: 'Obtener lista de todas las organizaciones' })
-  @ApiOkResponse({ description: 'Lista de organizaciones obtenida correctamente' })
+  @ApiOkResponse({
+    description: 'Lista de organizaciones obtenida correctamente',
+  })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({ description: 'No autorizado (solo SUPERADMIN)' })
   findAll() {

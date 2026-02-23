@@ -37,7 +37,9 @@ export class AuthController {
     type: LoginResponseDto,
   })
   @ApiBadRequestResponse({ description: 'Payload invalido' })
-  @ApiUnauthorizedResponse({ description: 'Credenciales invalidas o usuario inactivo' })
+  @ApiUnauthorizedResponse({
+    description: 'Credenciales invalidas o usuario inactivo',
+  })
   async login(@Body() loginDto: LoginDto): Promise<LoginResponse> {
     return this.authService.login(loginDto);
   }

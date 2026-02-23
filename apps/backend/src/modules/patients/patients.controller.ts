@@ -141,7 +141,9 @@ export class PatiensController {
     format: 'uuid',
     type: String,
   })
-  @ApiNoContentResponse({ description: 'Paciente eliminado o desactivado correctamente' })
+  @ApiNoContentResponse({
+    description: 'Paciente eliminado o desactivado correctamente',
+  })
   @ApiBadRequestResponse({ description: 'ID invalido' })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({

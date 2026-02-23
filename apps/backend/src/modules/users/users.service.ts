@@ -139,7 +139,7 @@ export class UsersService {
       const emailHtml = generateUserInvitationEmail({
         userEmail: normalizedEmail,
         organizationName: org.name,
-        userRole: role as 'professional' | 'lab_operator',
+        userRole: role,
         invitationLink,
         expiryDays: 7,
       });
