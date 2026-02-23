@@ -31,29 +31,20 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-slate-950 to-slate-950">
+  <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-white">
+
+
+    {/* Columna izquierda: Login */}
+    <div className="flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-slate-900/40 backdrop-blur-xl border border-slate-800 p-8 rounded-2xl shadow-2xl">
+        <div className="bg-white backdrop-blur-xl border  p-8 rounded-2xl shadow-2xl">
+
+          {/* --- LOGIN COMPLETO --- */}
           <div className="flex flex-col items-center mb-8">
-            <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-indigo-600/20">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-                className="w-7 h-7 text-white"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
-                />
-              </svg>
-            </div>
-            <h1 className="text-3xl font-bold text-white mb-1">Welcome Back</h1>
-            <p className="text-slate-400">
-              Enter your credentials to access ExampleAuth
+            
+            <h1 className="text-3xl font-bold text-black mb-5">Acceder a tu cuenta</h1>
+            <p className="text-slate-400 text-black">
+              Empieza a gestionar y unificar datos de microbiota intestinas de forma integrada
             </p>
           </div>
 
@@ -79,13 +70,14 @@ const Login: React.FC = () => {
             )}
 
             <Input
-              label="Email Address"
-              placeholder="name@company.com"
+              
+              placeholder="Email corporativo"
               type="email"
               required
               disabled={isLoading}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className="bg-white text-gray-900 placeholder-gray-400 border border-gray-300"
               icon={
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -106,12 +98,13 @@ const Login: React.FC = () => {
 
             <Input
               label="Password"
-              placeholder="••••••••"
+              placeholder="Contraseña/Credenciales"
               type="password"
               required
               disabled={isLoading}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              className="bg-white text-gray-900 placeholder-gray-400 border border-gray-300"
               icon={
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -131,41 +124,49 @@ const Login: React.FC = () => {
             />
 
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900"
-                />
-                <span className="text-sm text-slate-400">Remember me</span>
-              </label>
+            
               <button
                 type="button"
                 className="text-sm text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
               >
-                Forgot password?
+                ¿Haz olvidado tu contraseña?
               </button>
             </div>
 
             <Button type="submit" className="w-full mt-4" isLoading={isLoading}>
-              Sign In
+              Iniciar sesión
             </Button>
           </form>
 
           <div className="mt-8 pt-6 border-t border-slate-800 text-center">
             <p className="text-slate-400 text-sm">
-              Don't have an account?{" "}
+              No tienes una cuenta?{" "}
               <Link
                 to="/register"
                 className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors"
               >
-                Create Account
+                Crear cuenta
               </Link>
             </p>
           </div>
+
         </div>
       </div>
     </div>
-  );
+
+    {/* Columna derecha: Imagen */}
+    <div className="hidden md:flex items-center justify-center p-8">
+      <img
+        src="/ruta-de-tu-imagen.jpg"
+        alt="Login Illustration"
+        className="w-full h-full object-cover rounded-xl opacity-90"
+      />
+    </div>
+
+  </div>
+);
+
+
 };
 
 export default Login;
