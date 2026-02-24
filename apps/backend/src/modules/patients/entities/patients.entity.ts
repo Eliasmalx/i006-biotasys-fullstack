@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   Index,
 } from 'typeorm';
+import { PatientStatus } from '../../../common/enums/patient-status.enum';
 
 @Entity('patients')
 @Index(['organizationId'])
@@ -29,8 +30,8 @@ export class Patien {
   @Column({ type: 'uuid' })
   createdBy!: string; // FK → users (professional o lab_operator)
 
-  @Column({ type: 'varchar', default: 'active' })
-  status!: 'active' | 'inactive';
+  @Column({ type: 'enum', enum: PatientStatus, default: PatientStatus.ACTIVE })
+  status!: PatientStatus;
 
   @CreateDateColumn()
   createdAt!: Date;

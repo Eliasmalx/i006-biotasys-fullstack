@@ -12,6 +12,7 @@ import { ormConfig } from './config/orm.config';
 import { InvitationsModule } from './modules/invitations/invitations.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { PatiensModule } from './modules/patients/patients.module';
+import { CommonGuardsModule } from './common/guards/shared/common-guards.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { PatiensModule } from './modules/patients/patients.module';
     OrganizationsModule,
     DevModule,
     PatiensModule,
+    CommonGuardsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -2,6 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { Transporter } from 'nodemailer';
 import config from '../../../config/dotenv.config';
+import {
+  generateAdminInvitationEmail,
+  generateUserInvitationEmail,
+} from '../template';
 
 @Injectable()
 export class EmailService {
@@ -120,5 +124,50 @@ export class EmailService {
       this.logger.error(`Error al enviar email con adjuntos a ${to}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Envía email de invitación a administrador de organización
+   * @param to Email del admin invitado
+   * @param adminFullName Nombre completo del admin
+   * @param invitationLink Link para aceptar la invitación
+   */
+  async sendOrgAdminInvitationEmail(
+    to: string,
+    adminFullName: string,
+    invitationLink: string,
+  ): Promise<void> {
+    const html = generateAdminInvitationEmail({
+      adminEmail: to,
+      organizationName: 'Tu Organización',
+      invitationLink,
+      expiryDays: 7,
+    });
+
+    await this.sendEmail(to, 'Invitación de Administrador - Biotasys', html);
+  }
+
+  /**
+   * Envía email de invitación a profesional o lab operator
+   * @param to Email del usuario invitado
+   * @param organizationName Nombre de la organización
+   * @param userRole Rol del usuario ('professional' | 'lab_operator')
+   * @param invitationLink Link para aceptar la invitación
+   */
+  async sendUserInvitationEmail(
+    to: string,
+    organizationName: string,
+    userRole: 'professional' | 'lab_operator',
+    invitationLink: string,
+  ): Promise<void> {
+    const html = generateUserInvitationEmail({
+      userEmail: to,
+      organizationName,
+      userRole,
+      invitationLink,
+      expiryDays: 7,
+    });
+
+    await this.sendEmail(to, 'Invitación para Biotasys', html);
   }
 }

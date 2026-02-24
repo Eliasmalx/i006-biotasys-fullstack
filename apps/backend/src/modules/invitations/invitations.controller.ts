@@ -57,7 +57,11 @@ export class InvitationsController {
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'Usuario invitado exitosamente' },
+        message: {
+          type: 'string',
+          example:
+            'Invitación enviada. Se ha enviado un correo con los detalles al profesional.',
+        },
         data: {
           type: 'object',
           properties: {
@@ -67,7 +71,6 @@ export class InvitationsController {
               example: 'BIO-2026-AR-00001',
             },
             email: { type: 'string', example: 'doctor@biotasys.com' },
-            token: { type: 'string', example: 'a1b2c3d4...' },
             expiresAt: { type: 'string', format: 'date-time' },
           },
         },
@@ -119,12 +122,12 @@ export class InvitationsController {
     );
 
     return {
-      message: 'Usuario invitado exitosamente',
+      message:
+        'Invitación enviada. Se ha enviado un correo con los detalles al profesional.',
       data: {
         id: result.id,
         professionalId: result.professionalId,
         email: result.email,
-        token: result.token,
         expiresAt: result.expiresAt,
       },
     };

@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
   ConflictException,
@@ -6,8 +9,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
 import { Organization } from './entities/organization.entity';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
@@ -16,7 +17,10 @@ import { Invitation } from '../invitations/entities/invitation.entity';
 import { EmailService } from '../../infrastructure/email/services/email.service';
 import { Role } from '../../common/enums/role.enum';
 import { InvitationStatus } from '../../common/enums/invitation-status.enum';
-import { OrgStatus } from '../../common/enums/org-status.enum'; // <--- SIGUE AQUÍ
+import { OrgStatus } from '../../common/enums/org-status.enum';
+import config from '../../config/dotenv.config';
+import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class OrganizationsService {
@@ -33,12 +37,15 @@ export class OrganizationsService {
   ) {}
 
   /**
-   * Crea la organización y genera la invitación del Admin
+   * Crear organización e invitar al administrador
+   * @param superadminId ID del superadmin que crea la organización
+   * @param dto Datos de la organización y admin a invitar
+   * @description El token se envía solo al email del admin, nunca se devuelve al cliente
    */
   async createOrganizationAndInviteAdmin(
     superadminId: string,
     dto: CreateOrganizationDto,
-  ): Promise<string> {
+  ): Promise<void> {
     const email = dto.adminEmail.toLowerCase().trim();
 
     // 1. Validaciones
@@ -61,7 +68,7 @@ export class OrganizationsService {
       phone: dto.phone,
       specialty: dto.specialty,
       centerId: dto.centerId,
-      status: OrgStatus.ACTIVE, // <--- AQUÍ SE ASIGNA EL ESTADO ACTIVO
+      status: OrgStatus.ACTIVE,
       createdBy: superadminId,
     });
     const savedOrg = await this.orgRepo.save(org);
@@ -73,8 +80,8 @@ export class OrganizationsService {
     const invitation = this.invRepo.create({
       tokenHash,
       email,
-      firstName: dto.adminFullName.split(' ')[0],
-      lastName: dto.adminFullName.split(' ').slice(1).join(' ') || 'Admin',
+      firstName: dto.adminFullName.trim().split(/\s+/)[0],
+      lastName: dto.adminFullName.trim().split(/\s+/).slice(1).join(' '),
       dni: dto.adminDni,
       professionalId: dto.adminProfessionalId,
       role: Role.ADMIN,
@@ -85,17 +92,38 @@ export class OrganizationsService {
     });
     await this.invRepo.save(invitation);
 
-    // Nota: Aquí llamarías a emailService.sendEmail si lo tienes configurado
-
-    return token;
+    // Enviar email de invitación al admin
+    const invitationLink = `${config.frontendUrl}/invitations/accept/${token}`;
+    try {
+      await this.emailService.sendOrgAdminInvitationEmail(
+        email,
+        dto.adminFullName,
+        invitationLink,
+      );
+      this.logger.log(`Email de invitación enviado a ${email}`);
+    } catch (error) {
+      this.logger.error(
+        `Error enviando email a ${email}: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+      );
+      // No bloqueamos la creación si el email falla
+    }
   }
 
   // --- MÉTODOS DE MANTENIMIENTO ---
 
+  /**
+   * Obtener todas las organizaciones (restringido a SUPERADMIN)
+   * @returns Lista de todas las organizaciones
+   */
   async findAll() {
     return await this.orgRepo.find();
   }
 
+  /**
+   * Obtener una organización por ID
+   * @param id ID de la organización
+   * @returns Datos de la organización
+   */
   async findOne(id: string) {
     const org = await this.orgRepo.findOneBy({ id });
     if (!org)
@@ -103,15 +131,41 @@ export class OrganizationsService {
     return org;
   }
 
+  /**
+   * Actualizar datos de una organización
+   * @param id ID de la organización
+   * @param dto Datos a actualizar
+   * @returns Organización actualizada
+   */
   async update(id: string, dto: UpdateOrganizationDto) {
     const org = await this.findOne(id);
-    // Merge actualiza los campos que vengan en el DTO
-    const updated = this.orgRepo.merge(org, dto);
+
+    // Sanitizar el DTO para evitar cambios de campos sensibles
+    const safeUpdates = {
+      name: dto.organizationName,
+      address: dto.address,
+      city: dto.city,
+      phone: dto.phone,
+      specialty: dto.specialty,
+    } as Partial<Organization>;
+
+    const updated = this.orgRepo.merge(org, safeUpdates);
     return await this.orgRepo.save(updated);
   }
 
-  async remove(id: string) {
+  /**
+   * Desactivar una organización (soft delete)
+   * @param id ID de la organización
+   */
+  async remove(id: string): Promise<void> {
     const org = await this.findOne(id);
-    await this.orgRepo.remove(org);
+
+    if (org.status === OrgStatus.INACTIVE) {
+      throw new ConflictException('La organización ya está inactiva');
+    }
+
+    org.status = OrgStatus.INACTIVE;
+    await this.orgRepo.save(org);
+    this.logger.log(`Organización desactivada: ${org.name} (${org.id})`);
   }
 }

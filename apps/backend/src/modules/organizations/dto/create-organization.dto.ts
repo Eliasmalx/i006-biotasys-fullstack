@@ -5,6 +5,8 @@ import {
   IsEmail,
   MinLength,
   IsOptional,
+  Matches,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateOrganizationDto {
@@ -18,21 +20,27 @@ export class CreateOrganizationDto {
   @IsNotEmpty()
   adminEmail!: string;
 
-  @ApiProperty({ example: 'Juan Perez Admin' })
+  @ApiProperty({ 
+    example: 'Juan Perez', 
+    description: 'Nombre completo del admin (mínimo: nombre y apellido separados por espacio)'
+  })
   @IsString()
   @IsNotEmpty()
-  @MinLength(3)
+  @MinLength(5, { message: 'Debe contener al menos nombre y apellido (ej: "Juan Perez")' })
+  @Matches(/^[a-zA-ZáéíóúñÁÉÍÓÚÑ\s]+$/, {
+    message: 'El nombre solo puede contener letras y espacios'
+  })
   adminFullName!: string;
 
   @ApiProperty({ example: '12345678A' })
   @IsString()
   @IsNotEmpty()
-  adminDni!: string; // Añadido para la UI
+  adminDni!: string;
 
   @ApiProperty({ example: '080812345' })
   @IsString()
   @IsNotEmpty()
-  adminProfessionalId!: string; // Nº de colegiado
+  adminProfessionalId!: string;
 
   @ApiProperty({ example: 'B12345678' })
   @IsString()
@@ -42,7 +50,7 @@ export class CreateOrganizationDto {
   @ApiProperty({ example: 'H08012345' })
   @IsString()
   @IsNotEmpty()
-  centerId!: string; // ID de centro
+  centerId!: string;
 
   @ApiProperty({ example: 'Calle Falsa 123' })
   @IsString()
