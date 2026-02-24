@@ -1,25 +1,30 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import {
+  ApiBadRequestResponse,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+
 import { User } from '../modules/users/entities/user.entity';
 import { Role } from '../common/enums/role.enum';
-import { UserStatus } from '../common/enums/user-status.enum';
+import { CreateSuperadminDto } from './dto/create-superadmin.dto';
 
-interface CreateSuperadminPayload {
-  email: string;
-  password: string;
-  fullName?: string;
-}
-
-/**
- * ⚠️ ENDPOINT SOLO PARA DESARROLLO
- * Crea un superadministrador
- *
- * IMPORTANTE: En producción, este endpoint no debería existir
- * El superadmin debe crearse solo mediante migrations o scripts autorizados
- */
+@ApiTags('Dev')
 @Controller('dev')
 export class DevController {
   private readonly saltRounds = 10;
@@ -29,13 +34,40 @@ export class DevController {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  /**
-   * POST /api/dev/create-superadmin
-   * ⚠️ SOLO EN DESARROLLO
-   */
+  private splitFullName(fullName?: string): {
+    firstName: string;
+    lastName: string;
+  } {
+    const normalized = (fullName || 'Superadministrador')
+      .trim()
+      .replace(/\s+/g, ' ');
+    const [firstName, ...rest] = normalized.split(' ');
+
+    return {
+      firstName: firstName || 'Superadministrador',
+      lastName: rest.join(' ') || 'Biotasys',
+    };
+  }
+
+  private buildDevProfessionalId(): string {
+    const year = new Date().getFullYear();
+    const suffix = Math.floor(Math.random() * 100000)
+      .toString()
+      .padStart(5, '0');
+    return `BIO-${year}-DEV-${suffix}`;
+  }
+
   @Post('create-superadmin')
   @HttpCode(HttpStatus.CREATED)
-  async createSuperadmin(@Body() payload: CreateSuperadminPayload): Promise<{
+  @ApiOperation({
+    summary: 'Crear superadmin de desarrollo (solo entorno dev)',
+  })
+  @ApiBody({ type: CreateSuperadminDto })
+  @ApiCreatedResponse({ description: 'Superadministrador creado exitosamente' })
+  @ApiBadRequestResponse({
+    description: 'Email/password faltantes o email repetido',
+  })
+  async createSuperadmin(@Body() payload: CreateSuperadminDto): Promise<{
     message: string;
     superadmin: {
       id: string;
@@ -48,39 +80,44 @@ export class DevController {
       note: string;
     };
   }> {
-    // Validar entrada
     if (!payload.email || !payload.password) {
-      throw new Error('Email y password son requeridos');
+      throw new BadRequestException('Email y password son requeridos');
     }
 
     const normalizedEmail = payload.email.toLowerCase().trim();
 
-    // Verificar que no existe
     const existing = await this.userRepository.findOne({
       where: { email: normalizedEmail },
     });
 
     if (existing) {
-      throw new Error(`El email ${normalizedEmail} ya está registrado`);
+      throw new BadRequestException(
+        `El email ${normalizedEmail} ya esta registrado`,
+      );
     }
 
-    // Hashear password
-    const passwordHash = await bcrypt.hash(payload.password, this.saltRounds);
+    const { firstName, lastName } = this.splitFullName(payload.fullName);
+    const hashedPassword = await bcrypt.hash(payload.password, this.saltRounds);
+    const now = Date.now().toString();
 
-    // Crear superadmin
     const superadmin = this.userRepository.create({
       email: normalizedEmail,
-      fullName: payload.fullName || 'Superadministrador',
-      passwordHash,
+      password: hashedPassword,
+      firstName,
+      lastName,
+      dni: `DEV-${now}`,
+      professionalId: this.buildDevProfessionalId(),
       role: Role.SUPERADMIN,
+      isActive: true,
       organizationId: undefined,
-      status: UserStatus.ACTIVE,
-    } as Partial<User>);
+      colegiadoNumber: undefined,
+      invitationId: undefined,
+    });
 
-    const saved = (await this.userRepository.save(superadmin)) as User;
+    const saved = await this.userRepository.save(superadmin);
 
     return {
-      message: '✅ Superadministrador creado exitosamente',
+      message: 'Superadministrador creado exitosamente',
       superadmin: {
         id: saved.id,
         email: saved.email,

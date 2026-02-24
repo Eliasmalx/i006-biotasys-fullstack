@@ -14,7 +14,6 @@ import * as bcrypt from 'bcrypt';
 import { User } from '../users/entities/user.entity';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
-import { UserStatus } from '../../common/enums/user-status.enum';
 import { Invitation } from '../invitations/entities/invitation.entity';
 import { InvitationStatus } from '../../common/enums/invitation-status.enum';
 
@@ -57,6 +56,23 @@ export class AuthService {
     private readonly invitationRepository: Repository<Invitation>,
   ) {}
 
+  private getFullName(user: User): string {
+    return `${user.firstName} ${user.lastName}`.trim();
+  }
+
+  private splitFullName(fullName: string): {
+    firstName: string;
+    lastName: string;
+  } {
+    const normalized = fullName.trim().replace(/\s+/g, ' ');
+    const [firstName, ...rest] = normalized.split(' ');
+
+    return {
+      firstName: firstName || 'Usuario',
+      lastName: rest.join(' ') || 'Biotasys',
+    };
+  }
+
   /**
    * Login con email y contraseña
    * @param loginDto Email y contraseña
@@ -76,13 +92,13 @@ export class AuthService {
     }
 
     // Validar contraseña
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Email o contraseña incorrectos');
     }
 
     // Validar que el usuario está activo
-    if (user.status !== UserStatus.ACTIVE) {
+    if (!user.isActive) {
       throw new UnauthorizedException(
         'El usuario no está activo. Contacta con el administrador',
       );
@@ -102,7 +118,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        fullName: user.fullName,
+        fullName: this.getFullName(user),
         role: user.role,
         organizationId: user.organizationId,
       },
@@ -141,12 +157,12 @@ export class AuthService {
       throw new UnauthorizedException('Usuario no encontrado');
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Contraseña incorrecta');
     }
 
-    if (user.status !== UserStatus.ACTIVE) {
+    if (!user.isActive) {
       throw new UnauthorizedException('Usuario inactivo');
     }
 
@@ -216,16 +232,21 @@ export class AuthService {
 
     // Hashear contraseña
     const passwordHash = await bcrypt.hash(password, this.saltRounds);
+    const { firstName, lastName } = this.splitFullName(fullName);
 
     // Crear usuario
     const user = this.userRepository.create({
       email: validInvitation.email,
-      fullName: fullName.trim(),
-      passwordHash,
+      password: passwordHash,
+      firstName,
+      lastName,
+      dni: validInvitation.dni,
+      colegiadoNumber: validInvitation.colegiadoNumber,
+      professionalId: validInvitation.professionalId,
       role: validInvitation.role,
       organizationId: validInvitation.organizationId,
       invitationId: validInvitation.id,
-      status: UserStatus.ACTIVE,
+      isActive: true,
     });
 
     const savedUser = await this.userRepository.save(user);
@@ -247,7 +268,7 @@ export class AuthService {
       user: {
         id: savedUser.id,
         email: savedUser.email,
-        fullName: savedUser.fullName,
+        fullName: this.getFullName(savedUser),
         role: savedUser.role,
         organizationId: savedUser.organizationId,
       },

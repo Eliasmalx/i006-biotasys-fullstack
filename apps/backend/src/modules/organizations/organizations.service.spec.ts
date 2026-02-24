@@ -15,7 +15,7 @@ import { EmailService } from '../../infrastructure/email/services/email.service'
 type OrgRepoMock = jest.Mocked<
   Pick<
     Repository<Organization>,
-    'create' | 'save' | 'findOneBy' | 'find' | 'delete'
+    'create' | 'save' | 'findOneBy' | 'find' | 'findOne' | 'merge' | 'remove'
   >
 >;
 
@@ -24,7 +24,9 @@ const repoMock: OrgRepoMock = {
   save: jest.fn(),
   findOneBy: jest.fn(),
   find: jest.fn(),
-  delete: jest.fn(),
+  findOne: jest.fn(),
+  merge: jest.fn(),
+  remove: jest.fn(),
 };
 
 const userRepoMock = {
@@ -76,15 +78,31 @@ describe('OrganizationsService', () => {
     jest.clearAllMocks();
   });
 
-  it('create: should create and save organization', async () => {
+  it('createOrganizationAndInviteAdmin: should create organization and invitation', async () => {
     const dto = new CreateOrganizationDto();
-    dto.name = 'Org 1';
+    dto.organizationName = 'Org 1';
+    dto.adminEmail = 'admin@org.com';
+    dto.adminFullName = 'Admin Org';
+    dto.adminDni = '12345678A';
+    dto.adminProfessionalId = 'BIO-2026-AR-00001';
+    dto.cif = 'B12345678';
+    dto.centerId = 'H08012345';
+    dto.address = 'Calle Falsa 123';
+    dto.city = 'Madrid';
+    dto.phone = '912345678';
+    dto.specialty = 'General';
 
     const now = new Date();
 
     const entity: Organization = {
       id: 'uuid',
       name: 'Org 1',
+      cif: dto.cif,
+      centerId: dto.centerId,
+      address: dto.address,
+      city: dto.city,
+      phone: dto.phone,
+      specialty: dto.specialty,
       status: OrgStatus.ACTIVE,
       createdAt: now,
       updatedAt: now,
@@ -95,14 +113,32 @@ describe('OrganizationsService', () => {
       ...entity,
     };
 
+    userRepoMock.findOne.mockResolvedValue(null);
+    repo.findOne.mockResolvedValueOnce(null); // org by cif
     repo.create.mockReturnValue(entity);
     repo.save.mockResolvedValue(saved);
+    invitationRepoMock.create.mockReturnValue({} as Invitation);
+    invitationRepoMock.save.mockResolvedValue({ id: 'inv' } as Invitation);
 
-    const result = await service.create(dto);
+    const result = await service.createOrganizationAndInviteAdmin(
+      '22222222-2222-2222-2222-222222222222',
+      dto,
+    );
 
-    expect(repo.create).toHaveBeenCalledWith(dto);
+    expect(userRepoMock.findOne).toHaveBeenCalled();
+    expect(repo.findOne).toHaveBeenCalledWith({ where: { cif: dto.cif } });
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: dto.organizationName,
+        cif: dto.cif,
+        createdBy: '22222222-2222-2222-2222-222222222222',
+      }),
+    );
     expect(repo.save).toHaveBeenCalledWith(entity);
-    expect(result).toEqual(saved);
+    expect(invitationRepoMock.create).toHaveBeenCalled();
+    expect(invitationRepoMock.save).toHaveBeenCalled();
+    expect(typeof result).toBe('string');
+    expect(result.length).toBeGreaterThan(0);
   });
 
   it('update: should throw NotFound if org does not exist', async () => {
@@ -134,6 +170,7 @@ describe('OrganizationsService', () => {
     };
 
     repo.findOneBy.mockResolvedValue(existing);
+    repo.merge.mockImplementation((entity, patch) => ({ ...entity, ...patch }));
     repo.save.mockResolvedValue(saved);
 
     const patch = new UpdateOrganizationDto();
@@ -165,13 +202,14 @@ describe('OrganizationsService', () => {
     repo.findOneBy.mockResolvedValue(null);
     await expect(service.findOne('uuid')).rejects.toThrow(NotFoundException);
   });
-  it('remove: should delete when org exists', async () => {
-    repo.delete.mockResolvedValue({ affected: 1 } as DeleteResult);
+  it('remove: should remove when org exists', async () => {
+    repo.findOneBy.mockResolvedValue(existingOrg);
+    repo.remove.mockResolvedValue(existingOrg);
     await expect(service.remove('uuid')).resolves.toBeUndefined();
-    expect(repo.delete).toHaveBeenCalledWith({ id: 'uuid' });
+    expect(repo.remove).toHaveBeenCalledWith(existingOrg);
   });
   it('remove: should throw NotFound if missing', async () => {
-    repo.delete.mockResolvedValue({ affected: 0 } as DeleteResult);
+    repo.findOneBy.mockResolvedValue(null);
     await expect(service.remove('uuid')).rejects.toThrow(NotFoundException);
   });
 });

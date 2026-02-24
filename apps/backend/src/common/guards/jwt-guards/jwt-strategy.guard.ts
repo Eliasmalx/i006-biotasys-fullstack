@@ -6,7 +6,6 @@ import { Repository } from 'typeorm';
 import config from '../../../config/dotenv.config';
 import { User } from '../../../modules/users/entities/user.entity';
 import { Role } from '../../enums/role.enum';
-import { UserStatus } from '../../enums/user-status.enum';
 
 export interface JwtPayload {
   sub: string;
@@ -73,7 +72,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     // Validar que el usuario está activo
-    if (user.status !== UserStatus.ACTIVE) {
+    if (!user.isActive) {
       throw new UnauthorizedException('Usuario inactivo - acceso denegado');
     }
 

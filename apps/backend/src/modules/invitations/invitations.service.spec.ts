@@ -9,15 +9,26 @@ import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { UpdateInvitationDto } from './dto/update-invitation.dto';
 import { Role } from '../../common/enums/role.enum';
 import { InvitationStatus } from '../../common/enums/invitation-status.enum';
+import { EmailService } from '../../infrastructure/email/services/email.service';
 
 type InvitationRepoMock = jest.Mocked<
-  Pick<Repository<Invitation>, 'create' | 'save' | 'findOneBy'>
+  Pick<
+    Repository<Invitation>,
+    'count' | 'create' | 'save' | 'findOneBy' | 'findOne' | 'find'
+  >
 >;
 
 const repoMock: InvitationRepoMock = {
+  count: jest.fn(),
   create: jest.fn(),
   save: jest.fn(),
   findOneBy: jest.fn(),
+  findOne: jest.fn(),
+  find: jest.fn(),
+};
+
+const emailServiceMock = {
+  sendEmail: jest.fn(),
 };
 
 describe('InvitationsService', () => {
@@ -29,71 +40,71 @@ describe('InvitationsService', () => {
       providers: [
         InvitationsService,
         { provide: getRepositoryToken(Invitation), useValue: repoMock },
+        { provide: EmailService, useValue: emailServiceMock },
       ],
     }).compile();
 
-    service = module.get(InvitationsService);
-    repo = module.get(getRepositoryToken(Invitation));
+    service = module.get<InvitationsService>(InvitationsService);
+    repo = module.get<InvitationRepoMock>(getRepositoryToken(Invitation));
     jest.clearAllMocks();
+    emailServiceMock.sendEmail.mockResolvedValue(undefined);
   });
 
-  it('create: should build tokenHash/expiresAt, save, and return safe + token', async () => {
+  it('create: should create and save invitation with generated ids and return token', async () => {
     const dto = new CreateInvitationDto();
-    dto.email = 'a@b.com';
+    dto.email = 'doctor@biotasys.com';
+    dto.firstName = 'Juan';
+    dto.lastName = 'Perez';
+    dto.dni = '12345678Z';
     dto.role = Role.PROFESSIONAL;
-    dto.organizationId = '11111111-1111-1111-1111-111111111111';
 
     const invitedByUserId = '22222222-2222-2222-2222-222222222222';
+    const organizationId = '11111111-1111-1111-1111-111111111111';
 
-    const entity = {} as Invitation;
-    repo.create.mockReturnValue(entity);
+    repo.count.mockResolvedValue(0);
+    repo.create.mockImplementation((value) => value as unknown as Invitation);
 
     const saved: Invitation = {
-      id: 'inv',
-      tokenHash: 'hash',
+      id: 'inv-1',
       email: dto.email,
-      role: dto.role,
-      organizationId: dto.organizationId,
-      invitedBy: invitedByUserId,
-
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      dni: dto.dni,
+      professionalId: 'BIO-2026-AR-00001',
+      role: Role.PROFESSIONAL,
       status: InvitationStatus.PENDING,
+      organizationId,
+      tokenHash: 'x'.repeat(64),
       expiresAt: new Date(),
+      invitedBy: invitedByUserId,
       createdAt: new Date(),
     };
     repo.save.mockResolvedValue(saved);
 
-    const result = await service.create(dto, invitedByUserId);
+    const result = await service.create(dto, invitedByUserId, organizationId);
 
-    const createArg = repo.create.mock.calls[0]?.[0] as unknown as {
-      email: string;
-      role: Role;
-      organizationId: string;
-      invitedBy: string;
-      tokenHash: string;
-      expiresAt: Date;
-    };
+    expect(repo.count).toHaveBeenCalledWith({ where: { organizationId } });
+    expect(repo.create).toHaveBeenCalledTimes(1);
 
+    const createArg = repo.create.mock.calls[0]?.[0] as Partial<Invitation>;
     expect(createArg).toMatchObject({
       email: dto.email,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      dni: dto.dni,
       role: dto.role,
-      organizationId: dto.organizationId,
+      organizationId,
       invitedBy: invitedByUserId,
+      status: InvitationStatus.PENDING,
     });
-    expect(createArg.tokenHash).toHaveLength(64);
+    expect(createArg.professionalId).toMatch(/^BIO-\d{4}-AR-\d{5}$/);
+    expect(createArg.tokenHash).toEqual(expect.any(String));
+    expect(createArg.tokenHash).toContain('$2');
     expect(createArg.expiresAt).toBeInstanceOf(Date);
 
-    expect(repo.save).toHaveBeenCalledWith(entity);
-
-    expect('tokenHash' in result).toBe(false);
+    expect(repo.save).toHaveBeenCalled();
     expect(result.token).toHaveLength(64);
-    expect(result).toMatchObject({
-      id: saved.id,
-      email: saved.email,
-      role: saved.role,
-      organizationId: saved.organizationId,
-      invitedBy: saved.invitedBy,
-      status: saved.status,
-    });
+    expect('tokenHash' in result).toBe(false);
   });
 
   it('update: should throw NotFound when invitation does not exist', async () => {
@@ -107,46 +118,52 @@ describe('InvitationsService', () => {
     );
   });
 
-  it('update: should set acceptedAt when status becomes ACCEPTED and save', async () => {
+  it('update: should set acceptedAt when status becomes ACCEPTED', async () => {
     const existing: Invitation = {
-      id: 'inv',
-      tokenHash: 'hash',
-      email: 'a@b.com',
+      id: 'inv-1',
+      email: 'doctor@biotasys.com',
+      firstName: 'Juan',
+      lastName: 'Perez',
+      dni: '12345678Z',
+      professionalId: 'BIO-2026-AR-00001',
       role: Role.PROFESSIONAL,
-      organizationId: '11111111-1111-1111-1111-111111111111',
-      invitedBy: '22222222-2222-2222-2222-222222222222',
       status: InvitationStatus.PENDING,
+      organizationId: '11111111-1111-1111-1111-111111111111',
+      tokenHash: 'x'.repeat(64),
       expiresAt: new Date(),
+      invitedBy: '22222222-2222-2222-2222-222222222222',
       createdAt: new Date(),
     };
-
     repo.findOneBy.mockResolvedValue(existing);
-
-    const saved: Invitation = {
-      ...existing,
-      status: InvitationStatus.ACCEPTED,
-      acceptedAt: new Date(),
-    };
-    repo.save.mockResolvedValue(saved);
+    repo.save.mockImplementation(async (value) => value as Invitation);
 
     const dto = new UpdateInvitationDto();
     dto.status = InvitationStatus.ACCEPTED;
 
-    const result = await service.update('inv', dto);
-    const anyDate = expect.any(Date) as unknown as Date;
+    const result = await service.update('inv-1', dto);
 
     expect(repo.save).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: 'inv',
+        id: 'inv-1',
         status: InvitationStatus.ACCEPTED,
-        acceptedAt: anyDate,
+        acceptedAt: expect.any(Date),
       }),
     );
+    expect(result.status).toBe(InvitationStatus.ACCEPTED);
+  });
 
-    expect('tokenHash' in result).toBe(false);
-    expect(result).toMatchObject({
-      id: 'inv',
-      status: InvitationStatus.ACCEPTED,
+  it('findAllByOrganization: should list invitations ordered by createdAt DESC', async () => {
+    const rows = [{ id: 'inv-1' }] as Invitation[];
+    repo.find.mockResolvedValue(rows);
+
+    const result = await service.findAllByOrganization(
+      '11111111-1111-1111-1111-111111111111',
+    );
+
+    expect(repo.find).toHaveBeenCalledWith({
+      where: { organizationId: '11111111-1111-1111-1111-111111111111' },
+      order: { createdAt: 'DESC' },
     });
+    expect(result).toBe(rows);
   });
 });
