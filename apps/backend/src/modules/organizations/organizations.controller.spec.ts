@@ -30,7 +30,7 @@ describe('OrganizationsController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('createOrganizationAndInviteAdmin: should call service with req user id and dto', async () => {
+  it('create: should call service with req user id and dto', async () => {
     const dto = new InviteAdminDto();
     dto.organizationName = 'Org 1';
     dto.adminEmail = 'admin@org.com';
@@ -38,22 +38,18 @@ describe('OrganizationsController', () => {
 
     const req = {
       user: { userId: '22222222-2222-2222-2222-222222222222' },
-    } as Parameters<
-      OrganizationsController['createOrganizationAndInviteAdmin']
-    >[0];
+    } as Parameters<OrganizationsController['create']>[0];
 
     serviceMock.createOrganizationAndInviteAdmin.mockResolvedValue('token-123');
 
-    const result = await controller.createOrganizationAndInviteAdmin(req, dto);
+    const result = await controller.create(req, dto as any);
 
     expect(serviceMock.createOrganizationAndInviteAdmin).toHaveBeenCalledWith(
       req.user!.userId,
       dto,
     );
-    expect(result).toEqual({
-      message: 'Organizacion creada e invitacion enviada',
-      invitationToken: 'token-123',
-    });
+    expect(result).toMatchObject({ invitationToken: 'token-123' });
+    expect(result.message).toEqual(expect.any(String));
   });
 
   it('update: should call service.update with id and dto', async () => {

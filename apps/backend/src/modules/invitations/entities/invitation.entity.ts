@@ -5,33 +5,42 @@ import {
   PrimaryGeneratedColumn,
   Index,
 } from 'typeorm';
-import { Role } from '../../../common/enums/role.enum';
 import { InvitationStatus } from '../../../common/enums/invitation-status.enum';
+import { Role } from '../../../common/enums/role.enum';
 
 @Entity('invitations')
-@Index(['email'])
+@Index(['tokenHash']) // Cambiado de 'token' a 'tokenHash' por seguridad
 @Index(['organizationId'])
-@Index(['invitedBy'])
-@Index(['status'])
-@Index(['expiresAt'])
 export class Invitation {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ unique: true })
-  tokenHash!: string; // Hash del token (almacenado para seguridad)
-
   @Column()
   email!: string;
 
-  @Column({ type: 'enum', enum: Role })
+  @Column()
+  firstName!: string;
+
+  @Column()
+  lastName!: string;
+
+  @Column()
+  dni!: string;
+
+  @Column({ nullable: true })
+  colegiadoNumber?: string;
+
+  /**
+   * Identificador profesional: BIO-2026-AR-XXXXX
+   */
+  @Column({ unique: true })
+  professionalId!: string;
+
+  @Column({
+    type: 'enum',
+    enum: [Role.ADMIN, Role.PROFESSIONAL, Role.LAB_OPERATOR],
+  })
   role!: Role;
-
-  @Column({ type: 'uuid' })
-  organizationId!: string; // FK → organizations
-
-  @Column({ type: 'uuid' })
-  invitedBy!: string; // FK → users (quien invitó)
 
   @Column({
     type: 'enum',
@@ -40,11 +49,29 @@ export class Invitation {
   })
   status!: InvitationStatus;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ type: 'uuid' })
+  organizationId!: string;
+
+  /**
+   * SEGURIDAD: Guardamos el hash del token, no el token en texto plano
+   */
+  @Column({ unique: true })
+  tokenHash!: string;
+
+  /**
+   * CONTROL DE TIEMPO: Para que el link expire en 7 días
+   */
+  @Column({ type: 'timestamp' })
   expiresAt!: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   acceptedAt?: Date;
+
+  /**
+   * AUDITORÍA: Quién invitó a este usuario
+   */
+  @Column({ type: 'uuid' })
+  invitedBy!: string;
 
   @CreateDateColumn()
   createdAt!: Date;

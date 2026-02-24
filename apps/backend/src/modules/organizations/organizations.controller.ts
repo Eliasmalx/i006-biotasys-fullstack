@@ -28,15 +28,18 @@ import {
 } from '@nestjs/swagger';
 
 import { OrganizationsService } from './organizations.service';
+import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
-import { InviteAdminDto } from './dto/invite-admin.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/role-guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 
+/**
+ * Tipo extendido para capturar los datos del usuario autenticado desde el token JWT.
+ */
 type AuthenticatedRequest = ExpressRequest & {
-  user?: {
+  user: {
     userId: string;
     email: string;
     role: Role;
@@ -54,83 +57,67 @@ export class OrganizationsController {
   @Post()
   @Roles(Role.SUPERADMIN)
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Crear organizacion e invitar administrador' })
-  @ApiCreatedResponse({
-    description: 'Organizacion creada e invitacion enviada',
-    schema: {
-      type: 'object',
-      properties: {
-        message: {
-          type: 'string',
-          example: 'Organizacion creada e invitacion enviada',
-        },
-        invitationToken: { type: 'string', example: 'a1b2c3d4...' },
-      },
-    },
+  @ApiOperation({
+    summary: 'Crear organización e invitar al administrador inicial',
+    description:
+      'Crea la sede y genera una invitación para el jefe de la misma.',
   })
-  @ApiBadRequestResponse({ description: 'Datos invalidos' })
-  @ApiUnauthorizedResponse({ description: 'No autenticado' })
-  @ApiForbiddenResponse({ description: 'No autorizado (solo SUPERADMIN)' })
-  async createOrganizationAndInviteAdmin(
+  @ApiCreatedResponse({
+    description: 'La organización y la invitación se han creado con éxito.',
+  })
+  @ApiBadRequestResponse({ description: 'Datos inválidos o CIF duplicado.' })
+  @ApiForbiddenResponse({ description: 'Acceso restringido a Superadmins.' })
+  async create(
     @NestRequest() req: AuthenticatedRequest,
-    @Body() dto: InviteAdminDto,
-  ): Promise<{ message: string; invitationToken: string }> {
+    @Body() dto: CreateOrganizationDto,
+  ) {
+    // Es fundamental que el servicio reciba el CreateOrganizationDto completo
     const token =
       await this.organizationsService.createOrganizationAndInviteAdmin(
-        req.user!.userId,
+        req.user.userId,
         dto,
       );
 
     return {
-      message: 'Organizacion creada e invitacion enviada',
+      message: 'Organización creada e invitación enviada',
       invitationToken: token,
     };
   }
 
   @Get()
   @Roles(Role.SUPERADMIN)
-  @ApiOperation({ summary: 'Obtener lista de todas las organizaciones' })
-  @ApiOkResponse({
-    description: 'Lista de organizaciones obtenida correctamente',
-  })
-  @ApiUnauthorizedResponse({ description: 'No autenticado' })
-  @ApiForbiddenResponse({ description: 'No autorizado (solo SUPERADMIN)' })
+  @ApiOperation({ summary: 'Obtener el listado de todas las organizaciones' })
+  @ApiOkResponse({ description: 'Listado obtenido correctamente.' })
   findAll() {
     return this.organizationsService.findAll();
   }
 
   @Get(':id')
   @Roles(Role.SUPERADMIN)
-  @ApiOperation({ summary: 'Obtener una organizacion por su ID' })
+  @ApiOperation({ summary: 'Obtener detalles de una organización específica' })
   @ApiParam({
     name: 'id',
-    description: 'ID de la organizacion',
+    description: 'UUID de la organización',
     format: 'uuid',
-    type: String,
   })
-  @ApiOkResponse({ description: 'Organizacion obtenida correctamente' })
-  @ApiBadRequestResponse({ description: 'ID invalido' })
-  @ApiUnauthorizedResponse({ description: 'No autenticado' })
-  @ApiForbiddenResponse({ description: 'No autorizado (solo SUPERADMIN)' })
-  @ApiNotFoundResponse({ description: 'Organizacion no encontrada' })
+  @ApiOkResponse({ description: 'Detalles de la organización encontrados.' })
+  @ApiNotFoundResponse({ description: 'La organización no existe.' })
   findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.organizationsService.findOne(id);
   }
 
   @Patch(':id')
   @Roles(Role.SUPERADMIN)
-  @ApiOperation({ summary: 'Actualizar datos de una organizacion' })
+  @ApiOperation({ summary: 'Actualizar los datos de una organización' })
   @ApiParam({
     name: 'id',
-    description: 'ID de la organizacion',
+    description: 'UUID de la organización',
     format: 'uuid',
-    type: String,
   })
-  @ApiOkResponse({ description: 'Organizacion actualizada correctamente' })
-  @ApiBadRequestResponse({ description: 'ID o payload invalido' })
-  @ApiUnauthorizedResponse({ description: 'No autenticado' })
-  @ApiForbiddenResponse({ description: 'No autorizado (solo SUPERADMIN)' })
-  @ApiNotFoundResponse({ description: 'Organizacion no encontrada' })
+  @ApiOkResponse({ description: 'Organización actualizada correctamente.' })
+  @ApiBadRequestResponse({
+    description: 'ID o cuerpo de la petición inválido.',
+  })
   update(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: UpdateOrganizationDto,
@@ -141,18 +128,14 @@ export class OrganizationsController {
   @Delete(':id')
   @Roles(Role.SUPERADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Eliminar una organizacion' })
+  @ApiOperation({ summary: 'Eliminar una organización del sistema' })
   @ApiParam({
     name: 'id',
-    description: 'ID de la organizacion',
+    description: 'UUID de la organización',
     format: 'uuid',
-    type: String,
   })
-  @ApiNoContentResponse({ description: 'Organizacion eliminada correctamente' })
-  @ApiBadRequestResponse({ description: 'ID invalido' })
-  @ApiUnauthorizedResponse({ description: 'No autenticado' })
-  @ApiForbiddenResponse({ description: 'No autorizado (solo SUPERADMIN)' })
-  @ApiNotFoundResponse({ description: 'Organizacion no encontrada' })
+  @ApiNoContentResponse({ description: 'Organización eliminada con éxito.' })
+  @ApiNotFoundResponse({ description: 'Organización no encontrada.' })
   remove(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.organizationsService.remove(id);
   }

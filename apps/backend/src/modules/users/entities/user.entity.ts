@@ -7,12 +7,9 @@ import {
   Index,
 } from 'typeorm';
 import { Role } from '../../../common/enums/role.enum';
-import { UserStatus } from '../../../common/enums/user-status.enum';
+import { Exclude } from 'class-transformer';
 
 @Entity('users')
-@Index(['email'], { unique: true })
-@Index(['organizationId'])
-@Index(['role'])
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -21,22 +18,50 @@ export class User {
   email!: string;
 
   @Column()
-  fullName!: string;
+  @Exclude()
+  password!: string;
 
   @Column()
-  passwordHash!: string;
+  firstName!: string;
 
-  @Column({ type: 'enum', enum: Role })
+  @Column()
+  lastName!: string;
+
+  /**
+   * Identificación legal del profesional
+   */
+  @Index({ unique: true })
+  @Column()
+  dni!: string;
+
+  /**
+   * Número de colegiado (opcional para operarios)
+   */
+  @Column({ nullable: true })
+  colegiadoNumber?: string;
+
+  /**
+   * ID interno de Biotasys: BIO-2026-AR-XXXXX
+   */
+  @Index({ unique: true })
+  @Column()
+  professionalId!: string;
+
+  @Column({
+    type: 'enum',
+    enum: Role,
+    default: Role.PROFESSIONAL,
+  })
   role!: Role;
+
+  @Column({ default: true })
+  isActive!: boolean;
 
   @Column({ type: 'uuid', nullable: true })
   organizationId?: string;
 
   @Column({ type: 'uuid', nullable: true })
   invitationId?: string;
-
-  @Column({ type: 'enum', enum: UserStatus, default: UserStatus.ACTIVE })
-  status!: UserStatus;
 
   @Column({ type: 'timestamp', nullable: true })
   lastLoginAt?: Date;

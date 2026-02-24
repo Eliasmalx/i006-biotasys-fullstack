@@ -18,8 +18,26 @@ export class Organization {
   @Column()
   name!: string;
 
+  @Column({ unique: true })
+  cif!: string;
+
+  @Column()
+  address!: string;
+
+  @Column()
+  city!: string;
+
+  @Column({ nullable: true })
+  phone!: string; // Teléfono principal
+
+  @Column({ nullable: true })
+  specialty!: string; // Especialidad
+
+  @Column({ unique: true, nullable: true })
+  centerId!: string; // ID de centro (ej: H08012345)
+
   @Column({ type: 'uuid' })
-  createdBy!: string; // FK → users (superadmin quien creó la organización)
+  createdBy!: string;
 
   @Column({ type: 'enum', enum: OrgStatus, default: OrgStatus.ACTIVE })
   status!: OrgStatus;

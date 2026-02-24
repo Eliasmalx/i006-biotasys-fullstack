@@ -1,40 +1,52 @@
 import {
   IsEmail,
-  IsEnum,
-  IsUUID,
+  IsIn,
+  IsString,
   IsNotEmpty,
   IsOptional,
+  IsUUID,
 } from 'class-validator';
 import { Role } from '../../../common/enums/role.enum';
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-/**
- * DTO para crear invitación a profesional o lab_operator
- * POST /api/invitations
- */
 export class CreateInvitationDto {
-  @ApiProperty({
-    example: 'doctor.perez@biotasys.com',
-    description: 'Correo electrónico de la persona invitada',
-  })
+  @ApiProperty({ example: 'doctor@biotasys.com' })
   @IsEmail()
   @IsNotEmpty()
   email!: string;
 
-  @ApiProperty({
-    example: 'professional',
-    enum: [Role.PROFESSIONAL, Role.LAB_OPERATOR],
-    description: 'Rol que tendrá el usuario (professional o lab_operator)',
-  })
-  @IsEnum([Role.PROFESSIONAL, Role.LAB_OPERATOR], {
-    message: 'El rol debe ser "professional" o "lab_operator"',
+  @ApiProperty({ example: 'Juan' })
+  @IsString()
+  @IsNotEmpty()
+  firstName!: string;
+
+  @ApiProperty({ example: 'Perez' })
+  @IsString()
+  @IsNotEmpty()
+  lastName!: string;
+
+  @ApiProperty({ example: '12345678Z' })
+  @IsString()
+  @IsNotEmpty()
+  dni!: string;
+
+  @ApiPropertyOptional({ example: '083412345' })
+  @IsString()
+  @IsOptional()
+  colegiadoNumber?: string;
+
+  @ApiProperty({ enum: [Role.ADMIN, Role.PROFESSIONAL, Role.LAB_OPERATOR] })
+  @IsIn([Role.ADMIN, Role.PROFESSIONAL, Role.LAB_OPERATOR], {
+    message: 'Rol invalido para invitacion',
   })
   @IsNotEmpty()
-  role!: Role.PROFESSIONAL | Role.LAB_OPERATOR;
+  role!: Role.ADMIN | Role.PROFESSIONAL | Role.LAB_OPERATOR;
 
-  @ApiHideProperty()
+  @ApiPropertyOptional({
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    description: 'ID de la organizacion (requerido solo para superadmins)',
+  })
   @IsOptional()
   @IsUUID()
-  @IsNotEmpty()
-  organizationId!: string;
+  organizationId?: string;
 }

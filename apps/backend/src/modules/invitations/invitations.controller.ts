@@ -3,19 +3,19 @@ import {
   Controller,
   Param,
   Req,
+  Get,
   Patch,
   Post,
-  Get,
-  Delete,
   UseGuards,
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import type { Request } from 'express';
 
 import { InvitationsService } from './invitations.service';
-import { UsersService } from '../users/users.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { UpdateInvitationDto } from './dto/update-invitation.dto';
 import {
@@ -24,7 +24,6 @@ import {
   ApiOperation,
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiNoContentResponse,
   ApiBadRequestResponse,
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
@@ -37,99 +36,132 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 
 type RequestWithUser = Request & {
-  user: { userId: string; organizationId?: string };
+  user: { userId: string; role: Role; organizationId?: string };
 };
 
 @ApiTags('Admin - Invitaciones')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
 @Controller('invitations')
 export class InvitationsController {
-  constructor(
-    private readonly invitationsService: InvitationsService,
-    private readonly usersService: UsersService,
-  ) {}
+  constructor(private readonly invitationsService: InvitationsService) {}
 
   @Post()
+  @Roles(Role.SUPERADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Invitar a un nuevo profesional o tecnico' })
+  @ApiOperation({
+    summary: 'Crear una nueva invitación según jerarquía de roles',
+  })
   @ApiCreatedResponse({
-    description: 'Invitacion enviada exitosamente',
+    description: 'Invitación generada exitosamente',
     schema: {
       type: 'object',
       properties: {
         message: { type: 'string', example: 'Usuario invitado exitosamente' },
-        invitationToken: { type: 'string', example: 'a1b2c3d4...' },
+        data: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            professionalId: {
+              type: 'string',
+              example: 'BIO-2026-AR-00001',
+            },
+            email: { type: 'string', example: 'doctor@biotasys.com' },
+            token: { type: 'string', example: 'a1b2c3d4...' },
+            expiresAt: { type: 'string', format: 'date-time' },
+          },
+        },
       },
     },
   })
-  @ApiBadRequestResponse({ description: 'Datos de invitacion invalidos' })
+  @ApiBadRequestResponse({
+    description: 'Datos del formulario inválidos o falta organizationId',
+  })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
-  @ApiForbiddenResponse({ description: 'No autorizado (solo ADMIN)' })
+  @ApiForbiddenResponse({
+    description: 'No tiene permisos para invitar a este rol',
+  })
   async create(@Req() req: RequestWithUser, @Body() dto: CreateInvitationDto) {
-    const token = await this.usersService.inviteUser(
-      req.user.userId,
-      req.user.organizationId!,
+    const requesterRole = req.user.role;
+    let targetOrgId: string;
+
+    // Lógica de validación de jerarquía
+    if (requesterRole === Role.SUPERADMIN) {
+      if (dto.role !== Role.ADMIN) {
+        throw new ForbiddenException(
+          'Como Superadmin solo puedes invitar Administradores',
+        );
+      }
+      if (!dto.organizationId) {
+        throw new BadRequestException(
+          'Debes indicar el organizationId para el nuevo Admin',
+        );
+      }
+      targetOrgId = dto.organizationId;
+    } else {
+      if (dto.role === Role.ADMIN) {
+        throw new ForbiddenException(
+          'No tienes permiso para invitar a otros Administradores',
+        );
+      }
+      if (!req.user.organizationId) {
+        throw new BadRequestException(
+          'Tu usuario no tiene una organización asignada',
+        );
+      }
+      targetOrgId = req.user.organizationId;
+    }
+
+    const result = await this.invitationsService.create(
       dto,
+      req.user.userId,
+      targetOrgId,
     );
 
     return {
       message: 'Usuario invitado exitosamente',
-      invitationToken: token,
+      data: {
+        id: result.id,
+        professionalId: result.professionalId,
+        email: result.email,
+        token: result.token,
+        expiresAt: result.expiresAt,
+      },
     };
-  }
-
-  @Get()
-  @ApiOperation({ summary: 'Listar todas las invitaciones de la clinica' })
-  @ApiOkResponse({ description: 'Listado de invitaciones de la organizacion' })
-  @ApiUnauthorizedResponse({ description: 'No autenticado' })
-  @ApiForbiddenResponse({ description: 'No autorizado (solo ADMIN)' })
-  async list(@Req() req: RequestWithUser) {
-    return await this.usersService.listInvitations(req.user.organizationId!);
-  }
-
-  @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Revocar o cancelar una invitacion pendiente' })
-  @ApiParam({
-    name: 'id',
-    description: 'ID de la invitacion',
-    format: 'uuid',
-    type: String,
-  })
-  @ApiNoContentResponse({ description: 'Invitacion revocada correctamente' })
-  @ApiBadRequestResponse({ description: 'ID invalido' })
-  @ApiUnauthorizedResponse({ description: 'No autenticado' })
-  @ApiForbiddenResponse({ description: 'No autorizado (solo ADMIN)' })
-  @ApiNotFoundResponse({ description: 'Invitacion no encontrada' })
-  async revoke(
-    @Req() req: RequestWithUser,
-    @Param('id', new ParseUUIDPipe()) id: string,
-  ): Promise<void> {
-    await this.usersService.revokeInvitation(id, req.user.organizationId!);
   }
 
   @Patch(':id')
   @Roles(Role.SUPERADMIN)
-  @ApiOperation({
-    summary: 'Actualizar estado de invitacion (solo SUPERADMIN)',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'ID de la invitacion',
-    format: 'uuid',
-    type: String,
-  })
-  @ApiOkResponse({ description: 'Invitacion actualizada correctamente' })
-  @ApiBadRequestResponse({ description: 'ID o payload invalido' })
+  @ApiOperation({ summary: 'Actualizar estado de invitación (manual)' })
+  @ApiParam({ name: 'id', description: 'ID de la invitación', format: 'uuid' })
+  @ApiOkResponse({ description: 'Invitación actualizada' })
+  @ApiBadRequestResponse({ description: 'ID o payload inválido' })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
-  @ApiForbiddenResponse({ description: 'No autorizado (solo SUPERADMIN)' })
-  @ApiNotFoundResponse({ description: 'Invitacion no encontrada' })
-  update(
+  @ApiForbiddenResponse({
+    description: 'Solo el Superadmin puede actualizar estados manualmente',
+  })
+  @ApiNotFoundResponse({ description: 'La invitación no existe' })
+  async update(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: UpdateInvitationDto,
   ) {
-    return this.invitationsService.update(id, dto);
+    return await this.invitationsService.update(id, dto);
+  }
+
+  @Get()
+  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @ApiOperation({ summary: 'Listar invitaciones de mi organización' })
+  @ApiOkResponse({
+    description: 'Listado de invitaciones obtenido correctamente',
+  })
+  @ApiBadRequestResponse({ description: 'Usuario sin organizacion asignada' })
+  @ApiUnauthorizedResponse({ description: 'No autenticado' })
+  @ApiForbiddenResponse({ description: 'No autorizado' })
+  async findAll(@Req() req: RequestWithUser) {
+    const orgId = req.user.organizationId;
+    if (!orgId)
+      throw new BadRequestException('No tienes organización asignada');
+
+    return await this.invitationsService.findAllByOrganization(orgId);
   }
 }
