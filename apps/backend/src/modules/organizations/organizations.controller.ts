@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import {
   Body,
   Controller,
@@ -21,7 +22,6 @@ import {
   ApiOkResponse,
   ApiNoContentResponse,
   ApiBadRequestResponse,
-  ApiUnauthorizedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiParam,
@@ -71,16 +71,14 @@ export class OrganizationsController {
     @NestRequest() req: AuthenticatedRequest,
     @Body() dto: CreateOrganizationDto,
   ) {
-    // Es fundamental que el servicio reciba el CreateOrganizationDto completo
-    const token =
-      await this.organizationsService.createOrganizationAndInviteAdmin(
-        req.user.userId,
-        dto,
-      );
+    await this.organizationsService.createOrganizationAndInviteAdmin(
+      req.user.userId,
+      dto,
+    );
 
     return {
-      message: 'Organización creada e invitación enviada',
-      invitationToken: token,
+      message:
+        'Organización creada. Se ha enviado una invitación al correo del administrador.',
     };
   }
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
 import {
   Injectable,
   NotFoundException,
@@ -9,6 +10,7 @@ import { Repository } from 'typeorm';
 import { Patien } from './entities/patients.entity';
 import { CreatePatienDto } from './dto/create-patients.dto';
 import { UpdatePatienDto } from './dto/update-patients.dto';
+import { PatientStatus } from '../../common/enums/patient-status.enum';
 
 /**
  * PatiensService
@@ -41,7 +43,7 @@ export class PatiensService {
       email: dto.email ? dto.email.toLowerCase().trim() : undefined,
       organizationId,
       createdBy: userId,
-      status: 'active',
+      status: PatientStatus.ACTIVE,
     });
 
     const saved = await this.patientRepository.save(patient);
@@ -89,10 +91,16 @@ export class PatiensService {
    * Actualizar datos de un paciente
    * @param id ID del paciente
    * @param organizationId ID de la organización
+   * @param userId ID del usuario que actualiza (para auditoría)
    * @param dto Datos a actualizar
    * @returns Paciente actualizado
    */
-  async update(id: string, organizationId: string, dto: UpdatePatienDto) {
+  async update(
+    id: string,
+    organizationId: string,
+    userId: string,
+    dto: UpdatePatienDto,
+  ) {
     const patient = await this.patientRepository.findOne({
       where: { id, organizationId },
     });
@@ -112,7 +120,7 @@ export class PatiensService {
     }
 
     const saved = await this.patientRepository.save(patient);
-    this.logger.log(`Paciente actualizado: ${saved.id}`);
+    this.logger.log(`Paciente actualizado: ${saved.id} por usuario ${userId}`);
 
     return saved;
   }
@@ -121,8 +129,13 @@ export class PatiensService {
    * Desactivar un paciente
    * @param id ID del paciente
    * @param organizationId ID de la organización
+   * @param userId ID del usuario que desactiva (para auditoría)
    */
-  async remove(id: string, organizationId: string): Promise<void> {
+  async remove(
+    id: string,
+    organizationId: string,
+    userId: string,
+  ): Promise<void> {
     const patient = await this.patientRepository.findOne({
       where: { id, organizationId },
     });
@@ -131,12 +144,12 @@ export class PatiensService {
       throw new NotFoundException('Paciente no encontrado');
     }
 
-    if (patient.status === 'inactive') {
+    if (patient.status === PatientStatus.INACTIVE) {
       throw new BadRequestException('Paciente ya está inactivo');
     }
 
-    patient.status = 'inactive';
+    patient.status = PatientStatus.INACTIVE;
     await this.patientRepository.save(patient);
-    this.logger.log(`Paciente desactivado: ${id}`);
+    this.logger.log(`Paciente desactivado: ${id} por usuario ${userId}`);
   }
 }

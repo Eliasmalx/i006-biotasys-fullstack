@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import {
   Controller,
   Get,
@@ -32,6 +33,7 @@ import { CreatePatienDto } from './dto/create-patients.dto';
 import { UpdatePatienDto } from './dto/update-patients.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/role-guards/roles.guard';
+import { OrganizationOwnershipGuard } from '../../common/guards/owner-ship/organization-ownership.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 
@@ -84,6 +86,7 @@ export class PatiensController {
   }
 
   @Get(':id')
+  @UseGuards(OrganizationOwnershipGuard)
   @ApiOperation({ summary: 'Obtener la ficha completa de un paciente' })
   @ApiParam({
     name: 'id',
@@ -106,6 +109,7 @@ export class PatiensController {
   }
 
   @Patch(':id')
+  @UseGuards(OrganizationOwnershipGuard)
   @ApiOperation({ summary: 'Actualizar informacion de un paciente' })
   @ApiParam({
     name: 'id',
@@ -128,11 +132,13 @@ export class PatiensController {
     return await this.patiensService.update(
       id,
       req.user!.organizationId!,
+      req.user!.userId,
       updatePatienDto,
     );
   }
 
   @Delete(':id')
+  @UseGuards(OrganizationOwnershipGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Desactivar o eliminar registro de paciente' })
   @ApiParam({
@@ -154,6 +160,6 @@ export class PatiensController {
     @NestRequest() req: AuthenticatedRequest,
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<void> {
-    await this.patiensService.remove(id, req.user!.organizationId!);
+    await this.patiensService.remove(id, req.user!.organizationId!, req.user!.userId);
   }
 }

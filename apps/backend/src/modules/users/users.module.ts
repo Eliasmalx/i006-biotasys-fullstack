@@ -4,6 +4,7 @@ import { EmailModule } from '../../infrastructure/email/email.module';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
+import { CommonGuardsModule } from '../../common/guards/shared/common-guards.module';
 
 // Entidades
 import { User } from './entities/user.entity';
@@ -15,6 +16,7 @@ import { Invitation } from '../invitations/entities/invitation.entity';
     TypeOrmModule.forFeature([User, Organization, Invitation]),
     EmailModule,
     OrganizationsModule,
+    CommonGuardsModule,
   ],
   controllers: [UsersController],
   providers: [UsersService],

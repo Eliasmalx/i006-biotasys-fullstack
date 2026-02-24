@@ -173,6 +173,7 @@ export class AuthService {
    * Acepta una invitación y crea el usuario
    * @param dto Token, nombre y contraseña
    * @returns Usuario creado y JWT
+   * @description El token se valida contra el hash y la invitación se marca como ACCEPTED ANTES de crear el usuario para evitar race conditions
    */
   async acceptInvitation(dto: AcceptInvitationDto): Promise<LoginResponse> {
     const { token, fullName, password } = dto;
@@ -190,7 +191,7 @@ export class AuthService {
       );
     }
 
-    // Buscar invitación pendiente
+    // 1. Buscar invitación pendiente con token válido
     const invitations = await this.invitationRepository.find({
       where: {
         status: InvitationStatus.PENDING,
@@ -199,8 +200,14 @@ export class AuthService {
 
     let validInvitation: Invitation | null = null;
 
-    // Comparar token con hash
+    // Comparar token con hash y validar expiración
     for (const inv of invitations) {
+      // Validar expiración primero (más rápido)
+      if (new Date() > inv.expiresAt) {
+        continue;
+      }
+
+      // Validar token
       const isValid = await bcrypt.compare(token, inv.tokenHash);
       if (isValid) {
         validInvitation = inv;
@@ -209,17 +216,17 @@ export class AuthService {
     }
 
     if (!validInvitation) {
-      throw new BadRequestException('Token de invitación inválido');
+      throw new BadRequestException('Token de invitación inválido o expirado');
     }
 
-    // Validar expiración
-    if (new Date() > validInvitation.expiresAt) {
-      validInvitation.status = InvitationStatus.EXPIRED;
-      await this.invitationRepository.save(validInvitation);
-      throw new BadRequestException('Invitación expirada');
-    }
+    // 2. Marcar invitación como ACCEPTED INMEDIATAMENTE
+    // Esto previene race conditions: si otro request intenta con el mismo token,
+    // no encontrará una invitación PENDING
+    validInvitation.status = InvitationStatus.ACCEPTED;
+    validInvitation.acceptedAt = new Date();
+    await this.invitationRepository.save(validInvitation);
 
-    // Validar que el email no existe
+    // 3. Validar que el email no existe
     const existingUser = await this.userRepository.findOne({
       where: { email: validInvitation.email },
     });
@@ -230,18 +237,18 @@ export class AuthService {
       );
     }
 
-    // Hashear contraseña
+    // 4. Crear usuario
     const passwordHash = await bcrypt.hash(password, this.saltRounds);
     const { firstName, lastName } = this.splitFullName(fullName);
 
-    // Crear usuario
     const user = this.userRepository.create({
       email: validInvitation.email,
       password: passwordHash,
       firstName,
       lastName,
       dni: validInvitation.dni,
-      colegiadoNumber: validInvitation.colegiadoNumber,
+      // colegiadoNumber solo para PROFESSIONAL y LAB_OPERATOR (invitaciones de admin)
+      // Para ADMIN, se ignora
       professionalId: validInvitation.professionalId,
       role: validInvitation.role,
       organizationId: validInvitation.organizationId,
@@ -250,11 +257,6 @@ export class AuthService {
     });
 
     const savedUser = await this.userRepository.save(user);
-
-    // Marcar invitación como aceptada
-    validInvitation.status = InvitationStatus.ACCEPTED;
-    validInvitation.acceptedAt = new Date();
-    await this.invitationRepository.save(validInvitation);
 
     // Generar JWT
     const accessToken = this.generateJWT(savedUser);

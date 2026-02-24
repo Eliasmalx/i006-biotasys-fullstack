@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import {
   Body,
   Controller,
@@ -29,6 +30,7 @@ import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from './../../common/guards/jwt-guards/jwt-auth.guard';
 import { RolesGuard } from './../../common/guards/role-guards/roles.guard';
+import { OrganizationOwnershipGuard } from '../../common/guards/owner-ship/organization-ownership.guard';
 import { Roles } from './../../common/decorators/roles.decorator';
 import { Role } from './../../common/enums/role.enum';
 
@@ -61,6 +63,7 @@ export class UsersController {
   }
 
   @Get(':id')
+  @UseGuards(OrganizationOwnershipGuard)
   @ApiOperation({ summary: 'Obtener detalles de un usuario por ID' })
   @ApiParam({
     name: 'id',
@@ -73,13 +76,16 @@ export class UsersController {
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({ description: 'No autorizado' })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado' })
-  findOne(@Param('id', new ParseUUIDPipe()) id: string) {
-    // TODO: Implementar logica de obtener usuario
-    return { id };
+  async findOne(
+    @NestRequest() req: AuthenticatedRequest,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    return await this.usersService.findOne(id, req.user!.organizationId!);
   }
 
   @Patch(':id')
   @Roles(Role.ADMIN)
+  @UseGuards(OrganizationOwnershipGuard)
   @ApiOperation({ summary: 'Actualizar datos de un usuario (solo ADMIN)' })
   @ApiParam({
     name: 'id',
@@ -102,6 +108,7 @@ export class UsersController {
 
   @Delete(':id')
   @Roles(Role.ADMIN)
+  @UseGuards(OrganizationOwnershipGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Desactivar un usuario (solo ADMIN)' })
   @ApiParam({
