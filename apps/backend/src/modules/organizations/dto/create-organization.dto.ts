@@ -1,12 +1,13 @@
-import { IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
-import { OrgStatus } from '../../../common/enums/org-status.enum';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, MinLength } from 'class-validator';
 
 export class CreateOrganizationDto {
+  @ApiProperty({
+    example: 'Laboratorio de Análisis Microbióticos',
+    description: 'Nombre legal o comercial de la organización',
+  })
   @IsString()
-  @MinLength(1)
+  @IsNotEmpty({ message: 'El nombre es obligatorio' })
+  @MinLength(3)
   name!: string;
-
-  @IsOptional()
-  @IsEnum(OrgStatus)
-  status?: OrgStatus;
 }

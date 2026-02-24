@@ -2,12 +2,15 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { OrganizationsService } from './organizations.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Organization } from './entities/organization.entity';
+import { User } from '../users/entities/user.entity';
+import { Invitation } from '../invitations/entities/invitation.entity';
 import { NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { OrgStatus } from '../../common/enums/org-status.enum';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { DeleteResult } from 'typeorm';
+import { EmailService } from '../../infrastructure/email/services/email.service';
 
 type OrgRepoMock = jest.Mocked<
   Pick<
@@ -24,6 +27,20 @@ const repoMock: OrgRepoMock = {
   delete: jest.fn(),
 };
 
+const userRepoMock = {
+  findOne: jest.fn(),
+};
+
+const invitationRepoMock = {
+  findOne: jest.fn(),
+  create: jest.fn(),
+  save: jest.fn(),
+};
+
+const emailServiceMock = {
+  sendEmail: jest.fn(),
+};
+
 describe('OrganizationsService', () => {
   let service: OrganizationsService;
   let repo: OrgRepoMock;
@@ -34,6 +51,12 @@ describe('OrganizationsService', () => {
       providers: [
         OrganizationsService,
         { provide: getRepositoryToken(Organization), useValue: repoMock },
+        { provide: getRepositoryToken(User), useValue: userRepoMock },
+        {
+          provide: getRepositoryToken(Invitation),
+          useValue: invitationRepoMock,
+        },
+        { provide: EmailService, useValue: emailServiceMock },
       ],
     }).compile();
 

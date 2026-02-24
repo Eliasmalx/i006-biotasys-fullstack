@@ -1,12 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrganizationsController } from './organizations.controller';
 import { OrganizationsService } from './organizations.service';
-import { CreateOrganizationDto } from './dto/create-organization.dto';
+import { InviteAdminDto } from './dto/invite-admin.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { OrgStatus } from '../../common/enums/org-status.enum';
 
 const serviceMock = {
-  create: jest.fn(),
+  createOrganizationAndInviteAdmin: jest.fn(),
   update: jest.fn(),
   findAll: jest.fn(),
   findOne: jest.fn(),
@@ -30,26 +30,30 @@ describe('OrganizationsController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('create: should call service.create with dto', async () => {
-    const dto = new CreateOrganizationDto();
-    dto.name = 'Org 1';
-    dto.status = OrgStatus.ACTIVE;
+  it('createOrganizationAndInviteAdmin: should call service with req user id and dto', async () => {
+    const dto = new InviteAdminDto();
+    dto.organizationName = 'Org 1';
+    dto.adminEmail = 'admin@org.com';
+    dto.adminFullName = 'Admin Org';
 
-    const now = new Date();
-    const saved = {
-      id: 'uuid',
-      name: 'Org 1',
-      status: OrgStatus.ACTIVE,
-      createdAt: now,
-      updatedAt: now,
-    };
+    const req = {
+      user: { userId: '22222222-2222-2222-2222-222222222222' },
+    } as Parameters<
+      OrganizationsController['createOrganizationAndInviteAdmin']
+    >[0];
 
-    serviceMock.create.mockResolvedValue(saved);
+    serviceMock.createOrganizationAndInviteAdmin.mockResolvedValue('token-123');
 
-    const result = await controller.create(dto);
+    const result = await controller.createOrganizationAndInviteAdmin(req, dto);
 
-    expect(serviceMock.create).toHaveBeenCalledWith(dto);
-    expect(result).toEqual(saved);
+    expect(serviceMock.createOrganizationAndInviteAdmin).toHaveBeenCalledWith(
+      req.user!.userId,
+      dto,
+    );
+    expect(result).toEqual({
+      message: 'Organizacion creada e invitacion enviada',
+      invitationToken: 'token-123',
+    });
   });
 
   it('update: should call service.update with id and dto', async () => {
