@@ -97,7 +97,10 @@ export class UsersService {
     if (dto.lastName) user.lastName = dto.lastName.trim();
     if (dto.colegiadoNumber) user.colegiadoNumber = dto.colegiadoNumber;
 
-    return await this.userRepository.save(user);
+    await this.userRepository.save(user);
+
+    // Retornar una vista saneada (sin campos sensibles como password)
+    return await this.findOne(userId, organizationId);
   }
 
   /**

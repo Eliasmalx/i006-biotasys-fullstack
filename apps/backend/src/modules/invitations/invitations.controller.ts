@@ -19,6 +19,10 @@ import { InvitationsService } from './invitations.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { UpdateInvitationDto } from './dto/update-invitation.dto';
 import {
+  CreateInvitationResponseDto,
+  InvitationResponseDto,
+} from './dto/invitation-response.dto';
+import {
   ApiTags,
   ApiBearerAuth,
   ApiOperation,
@@ -34,6 +38,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/role-guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
+import { InvitationStatus } from '../../common/enums/invitation-status.enum';
 
 type RequestWithUser = Request & {
   user: { userId: string; role: Role; organizationId?: string };
@@ -46,39 +51,52 @@ type RequestWithUser = Request & {
 export class InvitationsController {
   constructor(private readonly invitationsService: InvitationsService) {}
 
+  private toInvitationResponse(invitation: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    dni: string;
+    colegiadoNumber?: string;
+    professionalId: string;
+    role: Role;
+    status: InvitationStatus;
+    organizationId: string;
+    expiresAt: Date;
+    acceptedAt?: Date;
+    invitedBy: string;
+    createdAt: Date;
+  }): InvitationResponseDto {
+    return {
+      id: invitation.id,
+      email: invitation.email,
+      firstName: invitation.firstName,
+      lastName: invitation.lastName,
+      dni: invitation.dni,
+      colegiadoNumber: invitation.colegiadoNumber,
+      professionalId: invitation.professionalId,
+      role: invitation.role,
+      status: invitation.status,
+      organizationId: invitation.organizationId,
+      expiresAt: invitation.expiresAt,
+      acceptedAt: invitation.acceptedAt,
+      invitedBy: invitation.invitedBy,
+      createdAt: invitation.createdAt,
+    };
+  }
+
   @Post()
   @Roles(Role.SUPERADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: 'Crear una nueva invitación según jerarquía de roles',
+    summary: 'Crear una nueva invitacion segun jerarquia de roles',
   })
   @ApiCreatedResponse({
-    description: 'Invitación generada exitosamente',
-    schema: {
-      type: 'object',
-      properties: {
-        message: {
-          type: 'string',
-          example:
-            'Invitación enviada. Se ha enviado un correo con los detalles al profesional.',
-        },
-        data: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', format: 'uuid' },
-            professionalId: {
-              type: 'string',
-              example: 'BIO-2026-AR-00001',
-            },
-            email: { type: 'string', example: 'doctor@biotasys.com' },
-            expiresAt: { type: 'string', format: 'date-time' },
-          },
-        },
-      },
-    },
+    description: 'Invitacion generada exitosamente',
+    type: CreateInvitationResponseDto,
   })
   @ApiBadRequestResponse({
-    description: 'Datos del formulario inválidos o falta organizationId',
+    description: 'Datos del formulario invalidos o falta organizationId',
   })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({
@@ -88,7 +106,6 @@ export class InvitationsController {
     const requesterRole = req.user.role;
     let targetOrgId: string;
 
-    // Lógica de validación de jerarquía
     if (requesterRole === Role.SUPERADMIN) {
       if (dto.role !== Role.ADMIN) {
         throw new ForbiddenException(
@@ -109,7 +126,7 @@ export class InvitationsController {
       }
       if (!req.user.organizationId) {
         throw new BadRequestException(
-          'Tu usuario no tiene una organización asignada',
+          'Tu usuario no tiene una organizacion asignada',
         );
       }
       targetOrgId = req.user.organizationId;
@@ -123,7 +140,7 @@ export class InvitationsController {
 
     return {
       message:
-        'Invitación enviada. Se ha enviado un correo con los detalles al profesional.',
+        'Invitacion enviada. Se ha enviado un correo con los detalles al profesional.',
       data: {
         id: result.id,
         professionalId: result.professionalId,
@@ -135,36 +152,44 @@ export class InvitationsController {
 
   @Patch(':id')
   @Roles(Role.SUPERADMIN)
-  @ApiOperation({ summary: 'Actualizar estado de invitación (manual)' })
-  @ApiParam({ name: 'id', description: 'ID de la invitación', format: 'uuid' })
-  @ApiOkResponse({ description: 'Invitación actualizada' })
-  @ApiBadRequestResponse({ description: 'ID o payload inválido' })
+  @ApiOperation({ summary: 'Actualizar estado de invitacion (manual)' })
+  @ApiParam({ name: 'id', description: 'ID de la invitacion', format: 'uuid' })
+  @ApiOkResponse({
+    description: 'Invitacion actualizada',
+    type: InvitationResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'ID o payload invalido' })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({
     description: 'Solo el Superadmin puede actualizar estados manualmente',
   })
-  @ApiNotFoundResponse({ description: 'La invitación no existe' })
+  @ApiNotFoundResponse({ description: 'La invitacion no existe' })
   async update(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: UpdateInvitationDto,
   ) {
-    return await this.invitationsService.update(id, dto);
+    const updated = await this.invitationsService.update(id, dto);
+    return this.toInvitationResponse(updated);
   }
 
   @Get()
   @Roles(Role.ADMIN, Role.SUPERADMIN)
-  @ApiOperation({ summary: 'Listar invitaciones de mi organización' })
+  @ApiOperation({ summary: 'Listar invitaciones de mi organizacion' })
   @ApiOkResponse({
     description: 'Listado de invitaciones obtenido correctamente',
+    type: InvitationResponseDto,
+    isArray: true,
   })
   @ApiBadRequestResponse({ description: 'Usuario sin organizacion asignada' })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({ description: 'No autorizado' })
   async findAll(@Req() req: RequestWithUser) {
     const orgId = req.user.organizationId;
-    if (!orgId)
-      throw new BadRequestException('No tienes organización asignada');
+    if (!orgId) {
+      throw new BadRequestException('No tienes organizacion asignada');
+    }
 
-    return await this.invitationsService.findAllByOrganization(orgId);
+    const invitations = await this.invitationsService.findAllByOrganization(orgId);
+    return invitations.map((invitation) => this.toInvitationResponse(invitation));
   }
 }

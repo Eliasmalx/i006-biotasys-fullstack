@@ -31,6 +31,10 @@ import {
 import { PatiensService } from './patients.service';
 import { CreatePatienDto } from './dto/create-patients.dto';
 import { UpdatePatienDto } from './dto/update-patients.dto';
+import {
+  PatientDetailResponseDto,
+  PatientListItemResponseDto,
+} from './dto/patient-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/role-guards/roles.guard';
 import { OrganizationOwnershipGuard } from '../../common/guards/owner-ship/organization-ownership.guard';
@@ -57,7 +61,10 @@ export class PatiensController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Registrar un nuevo paciente en la organizacion' })
-  @ApiCreatedResponse({ description: 'Paciente creado exitosamente' })
+  @ApiCreatedResponse({
+    description: 'Paciente creado exitosamente',
+    type: PatientDetailResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'Datos invalidos' })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({
@@ -76,7 +83,11 @@ export class PatiensController {
 
   @Get()
   @ApiOperation({ summary: 'Listar todos los pacientes de mi organizacion' })
-  @ApiOkResponse({ description: 'Listado de pacientes obtenido correctamente' })
+  @ApiOkResponse({
+    description: 'Listado de pacientes obtenido correctamente',
+    type: PatientListItemResponseDto,
+    isArray: true,
+  })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({
     description: 'No autorizado (solo PROFESSIONAL o LAB_OPERATOR)',
@@ -94,7 +105,10 @@ export class PatiensController {
     format: 'uuid',
     type: String,
   })
-  @ApiOkResponse({ description: 'Paciente obtenido correctamente' })
+  @ApiOkResponse({
+    description: 'Paciente obtenido correctamente',
+    type: PatientDetailResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'ID invalido' })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({
@@ -117,7 +131,10 @@ export class PatiensController {
     format: 'uuid',
     type: String,
   })
-  @ApiOkResponse({ description: 'Paciente actualizado correctamente' })
+  @ApiOkResponse({
+    description: 'Paciente actualizado correctamente',
+    type: PatientDetailResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'ID o payload invalido' })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({

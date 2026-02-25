@@ -1,19 +1,16 @@
-import { IsString, IsOptional, MinLength, MaxLength, Matches } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  MinLength,
+  MaxLength,
+  Matches,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
-/**
- * DTO para actualizar datos de un usuario
- * Se usa en PATCH /api/users/:id
- * 
- * Nota sobre colegiadoNumber:
- * - Solo PROFESSIONAL y LAB_OPERATOR pueden tener número de colegiado
- * - ADMIN no puede tener este campo
- * - La validación de rol debe hacerse en el controller/servicio
- */
 export class UpdateUserDto {
   @ApiPropertyOptional({
-    example: 'Maria',
-    description: 'Nombre del usuario',
+    example: 'María Silvia',
+    description: 'Nombre de pila del usuario',
     minLength: 2,
   })
   @IsString()
@@ -22,8 +19,8 @@ export class UpdateUserDto {
   firstName?: string;
 
   @ApiPropertyOptional({
-    example: 'Gomez',
-    description: 'Apellidos del usuario',
+    example: 'García López',
+    description: 'Apellidos completos del usuario',
     minLength: 2,
   })
   @IsString()
@@ -32,15 +29,22 @@ export class UpdateUserDto {
   lastName?: string;
 
   @ApiPropertyOptional({
-    example: '083412345',
-    description: 'Número de colegiado profesional (solo números y letras, 6-12 caracteres)',
+    example: '280812345',
+    description: 'Número de colegiado profesional (6-12 caracteres)',
+    minLength: 6,
+    maxLength: 12,
+    pattern: '^[0-9a-zA-Z]+$',
   })
   @IsString()
   @IsOptional()
-  @MinLength(6, { message: 'Número de colegiado debe tener al menos 6 caracteres' })
-  @MaxLength(12, { message: 'Número de colegiado no puede exceder 12 caracteres' })
-  @Matches(/^[0-9a-zA-Z]+$/, { 
-    message: 'Número de colegiado solo puede contener números y letras' 
+  @MinLength(6, {
+    message: 'Número de colegiado debe tener al menos 6 caracteres',
+  })
+  @MaxLength(12, {
+    message: 'Número de colegiado no puede exceder 12 caracteres',
+  })
+  @Matches(/^[0-9a-zA-Z]+$/, {
+    message: 'Número de colegiado solo puede contener números y letras',
   })
   colegiadoNumber?: string;
 }

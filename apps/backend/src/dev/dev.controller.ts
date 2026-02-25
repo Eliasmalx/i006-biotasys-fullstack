@@ -23,6 +23,7 @@ import * as bcrypt from 'bcrypt';
 import { User } from '../modules/users/entities/user.entity';
 import { Role } from '../common/enums/role.enum';
 import { CreateSuperadminDto } from './dto/create-superadmin.dto';
+import { CreateSuperadminResponseDto } from './dto/create-superadmin-response.dto';
 
 @ApiTags('Dev')
 @Controller('dev')
@@ -63,7 +64,10 @@ export class DevController {
     summary: 'Crear superadmin de desarrollo (solo entorno dev)',
   })
   @ApiBody({ type: CreateSuperadminDto })
-  @ApiCreatedResponse({ description: 'Superadministrador creado exitosamente' })
+  @ApiCreatedResponse({
+    description: 'Superadministrador creado exitosamente',
+    type: CreateSuperadminResponseDto,
+  })
   @ApiBadRequestResponse({
     description: 'Email/password faltantes o email repetido',
   })

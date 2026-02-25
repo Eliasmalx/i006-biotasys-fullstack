@@ -22,22 +22,25 @@ import {
   ApiOkResponse,
   ApiNoContentResponse,
   ApiBadRequestResponse,
+  ApiUnauthorizedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
+  ApiConflictResponse,
   ApiParam,
 } from '@nestjs/swagger';
 
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
+import {
+  CreateOrganizationResponseDto,
+  OrganizationResponseDto,
+} from './dto/organization-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/role-guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 
-/**
- * Tipo extendido para capturar los datos del usuario autenticado desde el token JWT.
- */
 type AuthenticatedRequest = ExpressRequest & {
   user: {
     userId: string;
@@ -58,14 +61,15 @@ export class OrganizationsController {
   @Roles(Role.SUPERADMIN)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: 'Crear organización e invitar al administrador inicial',
-    description:
-      'Crea la sede y genera una invitación para el jefe de la misma.',
+    summary: 'Crear organizacion e invitar al administrador inicial',
+    description: 'Crea la sede y genera una invitacion para el jefe de la misma.',
   })
   @ApiCreatedResponse({
-    description: 'La organización y la invitación se han creado con éxito.',
+    description: 'La organizacion y la invitacion se han creado con exito.',
+    type: CreateOrganizationResponseDto,
   })
-  @ApiBadRequestResponse({ description: 'Datos inválidos o CIF duplicado.' })
+  @ApiBadRequestResponse({ description: 'Datos invalidos o CIF duplicado.' })
+  @ApiUnauthorizedResponse({ description: 'No autenticado.' })
   @ApiForbiddenResponse({ description: 'Acceso restringido a Superadmins.' })
   async create(
     @NestRequest() req: AuthenticatedRequest,
@@ -78,44 +82,61 @@ export class OrganizationsController {
 
     return {
       message:
-        'Organización creada. Se ha enviado una invitación al correo del administrador.',
+        'Organizacion creada. Se ha enviado una invitacion al correo del administrador.',
     };
   }
 
   @Get()
   @Roles(Role.SUPERADMIN)
   @ApiOperation({ summary: 'Obtener el listado de todas las organizaciones' })
-  @ApiOkResponse({ description: 'Listado obtenido correctamente.' })
+  @ApiOkResponse({
+    description: 'Listado obtenido correctamente.',
+    type: OrganizationResponseDto,
+    isArray: true,
+  })
+  @ApiUnauthorizedResponse({ description: 'No autenticado.' })
+  @ApiForbiddenResponse({ description: 'Acceso restringido a Superadmins.' })
   findAll() {
     return this.organizationsService.findAll();
   }
 
   @Get(':id')
   @Roles(Role.SUPERADMIN)
-  @ApiOperation({ summary: 'Obtener detalles de una organización específica' })
+  @ApiOperation({ summary: 'Obtener detalles de una organizacion especifica' })
   @ApiParam({
     name: 'id',
-    description: 'UUID de la organización',
+    description: 'UUID de la organizacion',
     format: 'uuid',
   })
-  @ApiOkResponse({ description: 'Detalles de la organización encontrados.' })
-  @ApiNotFoundResponse({ description: 'La organización no existe.' })
+  @ApiOkResponse({
+    description: 'Detalles de la organizacion encontrados.',
+    type: OrganizationResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'No autenticado.' })
+  @ApiForbiddenResponse({ description: 'Acceso restringido a Superadmins.' })
+  @ApiNotFoundResponse({ description: 'La organizacion no existe.' })
   findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.organizationsService.findOne(id);
   }
 
   @Patch(':id')
   @Roles(Role.SUPERADMIN)
-  @ApiOperation({ summary: 'Actualizar los datos de una organización' })
+  @ApiOperation({ summary: 'Actualizar los datos de una organizacion' })
   @ApiParam({
     name: 'id',
-    description: 'UUID de la organización',
+    description: 'UUID de la organizacion',
     format: 'uuid',
   })
-  @ApiOkResponse({ description: 'Organización actualizada correctamente.' })
-  @ApiBadRequestResponse({
-    description: 'ID o cuerpo de la petición inválido.',
+  @ApiOkResponse({
+    description: 'Organizacion actualizada correctamente.',
+    type: OrganizationResponseDto,
   })
+  @ApiBadRequestResponse({
+    description: 'ID o cuerpo de la peticion invalido.',
+  })
+  @ApiUnauthorizedResponse({ description: 'No autenticado.' })
+  @ApiForbiddenResponse({ description: 'Acceso restringido a Superadmins.' })
+  @ApiNotFoundResponse({ description: 'La organizacion no existe.' })
   update(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: UpdateOrganizationDto,
@@ -126,14 +147,17 @@ export class OrganizationsController {
   @Delete(':id')
   @Roles(Role.SUPERADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Eliminar una organización del sistema' })
+  @ApiOperation({ summary: 'Eliminar una organizacion del sistema' })
   @ApiParam({
     name: 'id',
-    description: 'UUID de la organización',
+    description: 'UUID de la organizacion',
     format: 'uuid',
   })
-  @ApiNoContentResponse({ description: 'Organización eliminada con éxito.' })
-  @ApiNotFoundResponse({ description: 'Organización no encontrada.' })
+  @ApiNoContentResponse({ description: 'Organizacion eliminada con exito.' })
+  @ApiUnauthorizedResponse({ description: 'No autenticado.' })
+  @ApiForbiddenResponse({ description: 'Acceso restringido a Superadmins.' })
+  @ApiNotFoundResponse({ description: 'Organizacion no encontrada.' })
+  @ApiConflictResponse({ description: 'La organizacion ya esta inactiva.' })
   remove(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.organizationsService.remove(id);
   }

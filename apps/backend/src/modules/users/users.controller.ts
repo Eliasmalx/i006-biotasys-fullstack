@@ -25,9 +25,12 @@ import {
   ApiNotFoundResponse,
   ApiParam,
 } from '@nestjs/swagger';
-
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import {
+  UserDetailResponseDto,
+  UserListItemResponseDto,
+} from './dto/user-response.dto';
 import { JwtAuthGuard } from './../../common/guards/jwt-guards/jwt-auth.guard';
 import { RolesGuard } from './../../common/guards/role-guards/roles.guard';
 import { OrganizationOwnershipGuard } from '../../common/guards/owner-ship/organization-ownership.guard';
@@ -53,7 +56,11 @@ export class UsersController {
   @Get()
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Listar usuarios de la organizacion (solo ADMIN)' })
-  @ApiOkResponse({ description: 'Listado de usuarios obtenido correctamente' })
+  @ApiOkResponse({
+    description: 'Listado de usuarios obtenido correctamente',
+    type: UserListItemResponseDto,
+    isArray: true,
+  })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({ description: 'No autorizado (solo ADMIN)' })
   async listByOrganization(@NestRequest() req: AuthenticatedRequest) {
@@ -71,7 +78,10 @@ export class UsersController {
     format: 'uuid',
     type: String,
   })
-  @ApiOkResponse({ description: 'Usuario obtenido correctamente' })
+  @ApiOkResponse({
+    description: 'Usuario obtenido correctamente',
+    type: UserDetailResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'ID invalido' })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({ description: 'No autorizado' })
@@ -93,7 +103,10 @@ export class UsersController {
     format: 'uuid',
     type: String,
   })
-  @ApiOkResponse({ description: 'Usuario actualizado correctamente' })
+  @ApiOkResponse({
+    description: 'Usuario actualizado correctamente',
+    type: UserDetailResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'ID o payload invalido' })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({ description: 'No autorizado (solo ADMIN)' })
