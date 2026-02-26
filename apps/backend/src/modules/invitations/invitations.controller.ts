@@ -33,6 +33,9 @@ import {
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiParam,
+  ApiBody,
+  ApiExtraModels,
+  getSchemaPath,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/role-guards/roles.guard';
@@ -48,6 +51,7 @@ type RequestWithUser = Request & {
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('invitations')
+@ApiExtraModels(CreateInvitationDto)
 export class InvitationsController {
   constructor(private readonly invitationsService: InvitationsService) {}
 
@@ -90,13 +94,50 @@ export class InvitationsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Crear una nueva invitacion segun jerarquia de roles',
+    description:
+      'Reglas:\n' +
+      '- SUPERADMIN: solo puede invitar ADMIN y DEBE indicar organizationId.\n' +
+      '- ADMIN: solo puede invitar PROFESSIONAL o LAB_OPERATOR. organizationId del body se ignora y se usa el del JWT.\n',
+  })
+  @ApiBody({
+    required: true,
+    content: {
+      'application/json': {
+        schema: { $ref: getSchemaPath(CreateInvitationDto) },
+        examples: {
+          adminInvitaProfessional: {
+            summary: 'ADMIN invita PROFESSIONAL (sin organizationId)',
+            value: {
+              email: 'doctor@biotasys.com',
+              firstName: 'Juan',
+              lastName: 'Perez',
+              dni: '12345678Z',
+              colegiadoNumber: '083412345',
+              role: 'professional',
+            },
+          },
+          superadminInvitaAdmin: {
+            summary: 'SUPERADMIN invita ADMIN (requiere organizationId)',
+            value: {
+              email: 'admin.nuevo@biotasys.com',
+              firstName: 'Ana',
+              lastName: 'Lopez',
+              dni: '87654321X',
+              role: 'admin',
+              organizationId: '45ca04c7-2346-46b4-83b5-8d65b092b2b2',
+            },
+          },
+        },
+      },
+    },
   })
   @ApiCreatedResponse({
     description: 'Invitacion generada exitosamente',
     type: CreateInvitationResponseDto,
   })
   @ApiBadRequestResponse({
-    description: 'Datos del formulario invalidos o falta organizationId',
+    description:
+      'Datos inválidos. Nota: organizationId solo es obligatorio cuando SUPERADMIN invita ADMIN.',
   })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({
@@ -191,7 +232,10 @@ export class InvitationsController {
       throw new BadRequestException('No tienes organizacion asignada');
     }
 
-    const invitations = await this.invitationsService.findAllByOrganization(orgId);
-    return invitations.map((invitation) => this.toInvitationResponse(invitation));
+    const invitations =
+      await this.invitationsService.findAllByOrganization(orgId);
+    return invitations.map((invitation) =>
+      this.toInvitationResponse(invitation),
+    );
   }
 }
