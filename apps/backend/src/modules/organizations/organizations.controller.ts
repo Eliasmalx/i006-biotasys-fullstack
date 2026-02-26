@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import {
   Body,
   Controller,
@@ -62,27 +61,31 @@ export class OrganizationsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Crear organizacion e invitar al administrador inicial',
-    description: 'Crea la sede y genera una invitacion para el jefe de la misma.',
+    description:
+      'Crea la sede y genera una invitacion para el jefe de la misma.',
   })
   @ApiCreatedResponse({
     description: 'La organizacion y la invitacion se han creado con exito.',
     type: CreateOrganizationResponseDto,
   })
-  @ApiBadRequestResponse({ description: 'Datos invalidos o CIF duplicado.' })
+  @ApiBadRequestResponse({ description: 'Datos invalidos.' })
+  @ApiConflictResponse({ description: 'CIF o centerId duplicado.' })
   @ApiUnauthorizedResponse({ description: 'No autenticado.' })
   @ApiForbiddenResponse({ description: 'Acceso restringido a Superadmins.' })
   async create(
     @NestRequest() req: AuthenticatedRequest,
     @Body() dto: CreateOrganizationDto,
-  ) {
-    await this.organizationsService.createOrganizationAndInviteAdmin(
-      req.user.userId,
-      dto,
-    );
+  ): Promise<CreateOrganizationResponseDto> {
+    const invitationToken =
+      await this.organizationsService.createOrganizationAndInviteAdmin(
+        req.user.userId,
+        dto,
+      );
 
     return {
       message:
         'Organizacion creada. Se ha enviado una invitacion al correo del administrador.',
+      invitationToken,
     };
   }
 

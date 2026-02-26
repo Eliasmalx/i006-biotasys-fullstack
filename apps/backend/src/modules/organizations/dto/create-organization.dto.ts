@@ -20,15 +20,18 @@ export class CreateOrganizationDto {
   @IsNotEmpty()
   adminEmail!: string;
 
-  @ApiProperty({ 
-    example: 'Juan Perez', 
-    description: 'Nombre completo del admin (mínimo: nombre y apellido separados por espacio)'
+  @ApiProperty({
+    example: 'Juan Perez',
+    description:
+      'Nombre completo del admin (mínimo: nombre y apellido separados por espacio)',
   })
   @IsString()
   @IsNotEmpty()
-  @MinLength(5, { message: 'Debe contener al menos nombre y apellido (ej: "Juan Perez")' })
+  @MinLength(5, {
+    message: 'Debe contener al menos nombre y apellido (ej: "Juan Perez")',
+  })
   @Matches(/^[a-zA-ZáéíóúñÁÉÍÓÚÑ\s]+$/, {
-    message: 'El nombre solo puede contener letras y espacios'
+    message: 'El nombre solo puede contener letras y espacios',
   })
   adminFullName!: string;
 
@@ -42,7 +45,7 @@ export class CreateOrganizationDto {
   @IsNotEmpty()
   adminProfessionalId!: string;
 
-  @ApiProperty({ example: 'B12345678' })
+  @ApiProperty({ example: 'B15432678' })
   @IsString()
   @IsNotEmpty()
   cif!: string;

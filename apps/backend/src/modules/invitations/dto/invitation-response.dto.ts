@@ -16,6 +16,20 @@ export class InvitationCreateDataDto {
   expiresAt!: Date;
 }
 
+export class InvitationDebugDto {
+  @ApiProperty({
+    example:
+      '64characterlonghextoken000000000000000000000000000000000000000000',
+  })
+  invitationToken!: string;
+
+  @ApiProperty({
+    example:
+      'http://localhost:3001/invitations/accept/64characterlonghextoken...',
+  })
+  invitationLink!: string;
+}
+
 export class CreateInvitationResponseDto {
   @ApiProperty({
     example:
@@ -25,6 +39,13 @@ export class CreateInvitationResponseDto {
 
   @ApiProperty({ type: InvitationCreateDataDto })
   data!: InvitationCreateDataDto;
+
+  @ApiPropertyOptional({
+    description:
+      'Solo en desarrollo: datos de prueba para usar la invitacion desde Swagger/Postman',
+    type: InvitationDebugDto,
+  })
+  debug?: InvitationDebugDto;
 }
 
 export class InvitationResponseDto {

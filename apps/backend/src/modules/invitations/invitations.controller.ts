@@ -137,16 +137,18 @@ export class InvitationsController {
       req.user.userId,
       targetOrgId,
     );
+    const invitation = result.invitation;
 
     return {
       message:
         'Invitacion enviada. Se ha enviado un correo con los detalles al profesional.',
       data: {
-        id: result.id,
-        professionalId: result.professionalId,
-        email: result.email,
-        expiresAt: result.expiresAt,
+        id: invitation.id,
+        professionalId: invitation.professionalId,
+        email: invitation.email,
+        expiresAt: invitation.expiresAt,
       },
+      ...(result.debug ? { debug: result.debug } : {}),
     };
   }
 

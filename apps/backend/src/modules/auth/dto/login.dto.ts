@@ -7,7 +7,7 @@ import { IsString, IsEmail, IsNotEmpty, MinLength } from 'class-validator';
  */
 export class LoginDto {
   @ApiProperty({
-    example: 'admin@biotasys.com',
+    example: 'superadmin@local.test',
     description: 'Email del usuario para iniciar sesión',
   })
   @IsEmail({}, { message: 'Debe proporcionar un email válido' })
@@ -15,7 +15,7 @@ export class LoginDto {
   email!: string;
 
   @ApiProperty({
-    example: 'SuperAdmin123!',
+    example: 'password123',
     description: 'Contraseña de acceso (mínimo 8 caracteres)',
   })
   @IsString()

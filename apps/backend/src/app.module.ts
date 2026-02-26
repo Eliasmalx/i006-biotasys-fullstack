@@ -23,7 +23,7 @@ import { CommonGuardsModule } from './common/guards/shared/common-guards.module'
     EmailModule,
     InvitationsModule,
     OrganizationsModule,
-    DevModule,
+    ...(process.env.NODE_ENV === 'production' ? [] : [DevModule]),
     PatiensModule,
     CommonGuardsModule,
   ],

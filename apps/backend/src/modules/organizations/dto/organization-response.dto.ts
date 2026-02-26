@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OrgStatus } from '../../../common/enums/org-status.enum';
 
 export class OrganizationResponseDto {
@@ -45,4 +45,11 @@ export class CreateOrganizationResponseDto {
       'Organizacion creada. Se ha enviado una invitacion al correo del administrador.',
   })
   message!: string;
+
+  @ApiPropertyOptional({
+    example: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    description:
+      'Token de invitación (plaintext) para aceptar el alta del admin. Útil para QA/Swagger.',
+  })
+  invitationToken?: string;
 }
