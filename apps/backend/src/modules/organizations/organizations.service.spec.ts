@@ -9,7 +9,6 @@ import { Repository } from 'typeorm';
 import { OrgStatus } from '../../common/enums/org-status.enum';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
-import { DeleteResult } from 'typeorm';
 import { EmailService } from '../../infrastructure/email/services/email.service';
 
 type OrgRepoMock = jest.Mocked<
@@ -40,7 +39,7 @@ const invitationRepoMock = {
 };
 
 const emailServiceMock = {
-  sendEmail: jest.fn(),
+  sendOrgAdminInvitationEmail: jest.fn(),
 };
 
 describe('OrganizationsService', () => {
@@ -76,6 +75,7 @@ describe('OrganizationsService', () => {
     service = module.get(OrganizationsService);
     repo = module.get(getRepositoryToken(Organization));
     jest.clearAllMocks();
+    emailServiceMock.sendOrgAdminInvitationEmail.mockResolvedValue(undefined);
   });
 
   it('createOrganizationAndInviteAdmin: should create organization and invitation', async () => {
@@ -137,15 +137,16 @@ describe('OrganizationsService', () => {
     expect(repo.save).toHaveBeenCalledWith(entity);
     expect(invitationRepoMock.create).toHaveBeenCalled();
     expect(invitationRepoMock.save).toHaveBeenCalled();
+    expect(emailServiceMock.sendOrgAdminInvitationEmail).toHaveBeenCalled();
     expect(typeof result).toBe('string');
-    expect(result.length).toBeGreaterThan(0);
+    expect(result.length).toBe(64);
   });
 
   it('update: should throw NotFound if org does not exist', async () => {
     repo.findOneBy.mockResolvedValue(null);
 
     const patch = new UpdateOrganizationDto();
-    patch.name = 'X';
+    patch.organizationName = 'X';
 
     await expect(service.update('uuid', patch)).rejects.toThrow(
       NotFoundException,
@@ -174,7 +175,7 @@ describe('OrganizationsService', () => {
     repo.save.mockResolvedValue(saved);
 
     const patch = new UpdateOrganizationDto();
-    patch.name = 'New';
+    patch.organizationName = 'New';
 
     const result = await service.update('uuid', patch);
 
@@ -204,9 +205,11 @@ describe('OrganizationsService', () => {
   });
   it('remove: should remove when org exists', async () => {
     repo.findOneBy.mockResolvedValue(existingOrg);
-    repo.remove.mockResolvedValue(existingOrg);
+    repo.save.mockResolvedValue({ ...existingOrg, status: OrgStatus.INACTIVE });
     await expect(service.remove('uuid')).resolves.toBeUndefined();
-    expect(repo.remove).toHaveBeenCalledWith(existingOrg);
+    expect(repo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'uuid', status: OrgStatus.INACTIVE }),
+    );
   });
   it('remove: should throw NotFound if missing', async () => {
     repo.findOneBy.mockResolvedValue(null);

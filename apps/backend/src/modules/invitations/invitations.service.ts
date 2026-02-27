@@ -22,6 +22,14 @@ import { Organization } from '../organizations/entities/organization.entity';
 import config from '../../config/dotenv.config';
 import * as bcrypt from 'bcrypt';
 
+export interface CreateInvitationResult {
+  invitation: Invitation;
+  debug?: {
+    invitationToken: string;
+    invitationLink: string;
+  };
+}
+
 @Injectable()
 export class InvitationsService {
   private readonly logger = new Logger(InvitationsService.name);
@@ -47,7 +55,7 @@ export class InvitationsService {
     dto: CreateInvitationDto,
     invitedByUserId: string,
     organizationId: string,
-  ): Promise<Invitation> {
+  ): Promise<CreateInvitationResult> {
     // Validar que colegiadoNumber es requerido para PROFESSIONAL y LAB_OPERATOR
     if (
       (dto.role === Role.PROFESSIONAL || dto.role === Role.LAB_OPERATOR) &&
@@ -120,7 +128,17 @@ export class InvitationsService {
     }
 
     // Retornamos la invitación SIN el token (seguridad)
-    return saved;
+    if (process.env.NODE_ENV !== 'production') {
+      return {
+        invitation: saved,
+        debug: {
+          invitationToken: token,
+          invitationLink,
+        },
+      };
+    }
+
+    return { invitation: saved };
   }
 
   /**

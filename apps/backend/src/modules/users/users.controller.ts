@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import {
   Body,
   Controller,
@@ -11,6 +10,7 @@ import {
   Request as NestRequest,
   HttpCode,
   HttpStatus,
+  ForbiddenException,
 } from '@nestjs/common';
 import type { Request as ExpressRequest } from 'express';
 import {
@@ -25,9 +25,12 @@ import {
   ApiNotFoundResponse,
   ApiParam,
 } from '@nestjs/swagger';
-
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import {
+  UserDetailResponseDto,
+  UserListItemResponseDto,
+} from './dto/user-response.dto';
 import { JwtAuthGuard } from './../../common/guards/jwt-guards/jwt-auth.guard';
 import { RolesGuard } from './../../common/guards/role-guards/roles.guard';
 import { OrganizationOwnershipGuard } from '../../common/guards/owner-ship/organization-ownership.guard';
@@ -53,7 +56,11 @@ export class UsersController {
   @Get()
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Listar usuarios de la organizacion (solo ADMIN)' })
-  @ApiOkResponse({ description: 'Listado de usuarios obtenido correctamente' })
+  @ApiOkResponse({
+    description: 'Listado de usuarios obtenido correctamente',
+    type: UserListItemResponseDto,
+    isArray: true,
+  })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({ description: 'No autorizado (solo ADMIN)' })
   async listByOrganization(@NestRequest() req: AuthenticatedRequest) {
@@ -71,7 +78,10 @@ export class UsersController {
     format: 'uuid',
     type: String,
   })
-  @ApiOkResponse({ description: 'Usuario obtenido correctamente' })
+  @ApiOkResponse({
+    description: 'Usuario obtenido correctamente',
+    type: UserDetailResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'ID invalido' })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({ description: 'No autorizado' })
@@ -80,7 +90,13 @@ export class UsersController {
     @NestRequest() req: AuthenticatedRequest,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
-    return await this.usersService.findOne(id, req.user!.organizationId!);
+    const me = req.user!;
+    // ✅ FIX: si NO es admin, solo puede pedir su propio id
+    if (me.role !== Role.ADMIN && me.userId !== id) {
+      throw new ForbiddenException('No tienes permiso para ver este usuario');
+    }
+
+    return await this.usersService.findOne(id, me.organizationId!);
   }
 
   @Patch(':id')
@@ -93,7 +109,10 @@ export class UsersController {
     format: 'uuid',
     type: String,
   })
-  @ApiOkResponse({ description: 'Usuario actualizado correctamente' })
+  @ApiOkResponse({
+    description: 'Usuario actualizado correctamente',
+    type: UserDetailResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'ID o payload invalido' })
   @ApiUnauthorizedResponse({ description: 'No autenticado' })
   @ApiForbiddenResponse({ description: 'No autorizado (solo ADMIN)' })
@@ -104,6 +123,30 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
   ) {
     return await this.usersService.update(id, req.user!.organizationId!, dto);
+  }
+  @Patch(':id/activate')
+  @Roles(Role.ADMIN)
+  @UseGuards(OrganizationOwnershipGuard)
+  @ApiOperation({ summary: 'Reactivar un usuario (solo ADMIN)' })
+  @ApiParam({
+    name: 'id',
+    description: 'ID del usuario',
+    format: 'uuid',
+    type: String,
+  })
+  @ApiOkResponse({
+    description: 'Usuario reactivado correctamente',
+    type: UserDetailResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'ID invalido' })
+  @ApiUnauthorizedResponse({ description: 'No autenticado' })
+  @ApiForbiddenResponse({ description: 'No autorizado (solo ADMIN)' })
+  @ApiNotFoundResponse({ description: 'Usuario no encontrado' })
+  async activate(
+    @NestRequest() req: AuthenticatedRequest,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    return await this.usersService.activate(id, req.user!.organizationId!);
   }
 
   @Delete(':id')

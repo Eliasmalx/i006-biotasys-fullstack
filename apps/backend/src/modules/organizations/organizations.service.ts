@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { Organization } from './entities/organization.entity';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
@@ -40,26 +40,37 @@ export class OrganizationsService {
    * Crear organización e invitar al administrador
    * @param superadminId ID del superadmin que crea la organización
    * @param dto Datos de la organización y admin a invitar
-   * @description El token se envía solo al email del admin, nunca se devuelve al cliente
+   * @returns invitationToken (plaintext) para poder probar el flujo en Swagger/QA
    */
   async createOrganizationAndInviteAdmin(
     superadminId: string,
     dto: CreateOrganizationDto,
-  ): Promise<void> {
+  ): Promise<string> {
     const email = dto.adminEmail.toLowerCase().trim();
 
     // 1. Validaciones
     const userExists = await this.userRepo.findOne({ where: { email } });
-    if (userExists)
+    if (userExists) {
       throw new ConflictException(
         'Este email ya está registrado en el sistema',
       );
+    }
 
     const orgExists = await this.orgRepo.findOne({ where: { cif: dto.cif } });
-    if (orgExists)
+    if (orgExists) {
       throw new ConflictException('Ya existe una organización con este CIF');
+    }
 
-    // 2. Crear Organización (Aquí usamos OrgStatus)
+    const centerExists = await this.orgRepo.findOne({
+      where: { centerId: dto.centerId },
+    });
+    if (centerExists) {
+      throw new ConflictException(
+        'Ya existe una organización con este centerId',
+      );
+    }
+
+    // 2. Crear Organización
     const org = this.orgRepo.create({
       name: dto.organizationName,
       cif: dto.cif,
@@ -71,7 +82,31 @@ export class OrganizationsService {
       status: OrgStatus.ACTIVE,
       createdBy: superadminId,
     });
-    const savedOrg = await this.orgRepo.save(org);
+
+    let savedOrg: Organization;
+    try {
+      savedOrg = await this.orgRepo.save(org);
+    } catch (err) {
+      // Blindaje extra ante carreras / unique constraints
+      if (
+        err instanceof QueryFailedError &&
+        (err as any).driverError?.code === '23505'
+      ) {
+        const detail = (err as any).driverError?.detail ?? '';
+        if (detail.includes('("centerId")')) {
+          throw new ConflictException(
+            'Ya existe una organización con este centerId',
+          );
+        }
+        if (detail.includes('("cif")')) {
+          throw new ConflictException(
+            'Ya existe una organización con este CIF',
+          );
+        }
+        throw new ConflictException('Organización duplicada');
+      }
+      throw err;
+    }
 
     // 3. Generar Token e Invitación
     const token = crypto.randomBytes(32).toString('hex');
@@ -90,6 +125,7 @@ export class OrganizationsService {
       status: InvitationStatus.PENDING,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 días
     });
+
     await this.invRepo.save(invitation);
 
     // Enviar email de invitación al admin
@@ -103,44 +139,34 @@ export class OrganizationsService {
       this.logger.log(`Email de invitación enviado a ${email}`);
     } catch (error) {
       this.logger.error(
-        `Error enviando email a ${email}: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+        `Error enviando email a ${email}: ${
+          error instanceof Error ? error.message : 'Error desconocido'
+        }`,
       );
       // No bloqueamos la creación si el email falla
     }
+
+    // ✅ devolvemos el token para verlo en Swagger
+    return token;
   }
 
   // --- MÉTODOS DE MANTENIMIENTO ---
 
-  /**
-   * Obtener todas las organizaciones (restringido a SUPERADMIN)
-   * @returns Lista de todas las organizaciones
-   */
   async findAll() {
     return await this.orgRepo.find();
   }
 
-  /**
-   * Obtener una organización por ID
-   * @param id ID de la organización
-   * @returns Datos de la organización
-   */
   async findOne(id: string) {
     const org = await this.orgRepo.findOneBy({ id });
-    if (!org)
+    if (!org) {
       throw new NotFoundException(`Organización con ID ${id} no encontrada`);
+    }
     return org;
   }
 
-  /**
-   * Actualizar datos de una organización
-   * @param id ID de la organización
-   * @param dto Datos a actualizar
-   * @returns Organización actualizada
-   */
   async update(id: string, dto: UpdateOrganizationDto) {
     const org = await this.findOne(id);
 
-    // Sanitizar el DTO para evitar cambios de campos sensibles
     const safeUpdates = {
       name: dto.organizationName,
       address: dto.address,
@@ -153,10 +179,6 @@ export class OrganizationsService {
     return await this.orgRepo.save(updated);
   }
 
-  /**
-   * Desactivar una organización (soft delete)
-   * @param id ID de la organización
-   */
   async remove(id: string): Promise<void> {
     const org = await this.findOne(id);
 

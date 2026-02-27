@@ -33,16 +33,21 @@ export class CreateInvitationDto {
   @IsNotEmpty()
   dni!: string;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     example: '083412345',
-    description: 'Número de colegiado (opcional, solo para PROFESSIONAL y LAB_OPERATOR)'
+    description:
+      'Número de colegiado (opcional en DTO, pero requerido por backend para PROFESSIONAL y LAB_OPERATOR)',
   })
   @IsString()
   @IsOptional()
-  @MinLength(6, { message: 'Número de colegiado debe tener al menos 6 caracteres' })
-  @MaxLength(12, { message: 'Número de colegiado no puede exceder 12 caracteres' })
-  @Matches(/^[0-9a-zA-Z]+$/, { 
-    message: 'Número de colegiado solo puede contener números y letras' 
+  @MinLength(6, {
+    message: 'Número de colegiado debe tener al menos 6 caracteres',
+  })
+  @MaxLength(12, {
+    message: 'Número de colegiado no puede exceder 12 caracteres',
+  })
+  @Matches(/^[0-9a-zA-Z]+$/, {
+    message: 'Número de colegiado solo puede contener números y letras',
   })
   colegiadoNumber?: string;
 
@@ -54,8 +59,10 @@ export class CreateInvitationDto {
   role!: Role.ADMIN | Role.PROFESSIONAL | Role.LAB_OPERATOR;
 
   @ApiPropertyOptional({
-    example: '123e4567-e89b-12d3-a456-426614174000',
-    description: 'ID de la organizacion (requerido solo para superadmins)',
+    example: '45ca04c7-2346-46b4-83b5-8d65b092b2b2',
+    description:
+      '⚠️ Condicional: SOLO se usa cuando el solicitante es SUPERADMIN y el rol a invitar es ADMIN. ' +
+      'Si el solicitante es ADMIN, este campo se IGNORA y se usa organizationId del JWT.',
   })
   @IsOptional()
   @IsUUID()

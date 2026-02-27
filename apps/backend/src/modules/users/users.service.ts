@@ -97,7 +97,10 @@ export class UsersService {
     if (dto.lastName) user.lastName = dto.lastName.trim();
     if (dto.colegiadoNumber) user.colegiadoNumber = dto.colegiadoNumber;
 
-    return await this.userRepository.save(user);
+    await this.userRepository.save(user);
+
+    // Retornar una vista saneada (sin campos sensibles como password)
+    return await this.findOne(userId, organizationId);
   }
 
   /**
@@ -115,5 +118,24 @@ export class UsersService {
     user.isActive = false;
     await this.userRepository.save(user);
     this.logger.log(`Usuario ${user.email} desactivado`);
+  }
+  /**
+   * Reactivar un usuario
+   * @param userId ID del usuario
+   * @param organizationId ID de la organización
+   * @returns Usuario reactivado (vista saneada)
+   */
+  async activate(userId: string, organizationId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId, organizationId },
+    });
+
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    user.isActive = true;
+    await this.userRepository.save(user);
+    this.logger.log(`Usuario ${user.email} reactivado`);
+
+    return await this.findOne(userId, organizationId);
   }
 }
