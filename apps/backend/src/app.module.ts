@@ -13,6 +13,7 @@ import { InvitationsModule } from './modules/invitations/invitations.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { PatiensModule } from './modules/patients/patients.module';
 import { CommonGuardsModule } from './common/guards/shared/common-guards.module';
+import { StudiesModule } from './modules/studies/studies.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { CommonGuardsModule } from './common/guards/shared/common-guards.module'
     ...(process.env.NODE_ENV === 'production' ? [] : [DevModule]),
     PatiensModule,
     CommonGuardsModule,
+    StudiesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
