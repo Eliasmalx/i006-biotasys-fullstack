@@ -99,8 +99,8 @@ export class OrganizationsController {
   })
   @ApiUnauthorizedResponse({ description: 'No autenticado.' })
   @ApiForbiddenResponse({ description: 'Acceso restringido a Superadmins.' })
-  findAll() {
-    return this.organizationsService.findAll();
+  async findAll(): Promise<OrganizationResponseDto[]> {
+    return await this.organizationsService.findAll();
   }
 
   @Get(':id')
@@ -118,8 +118,10 @@ export class OrganizationsController {
   @ApiUnauthorizedResponse({ description: 'No autenticado.' })
   @ApiForbiddenResponse({ description: 'Acceso restringido a Superadmins.' })
   @ApiNotFoundResponse({ description: 'La organizacion no existe.' })
-  findOne(@Param('id', new ParseUUIDPipe()) id: string) {
-    return this.organizationsService.findOne(id);
+  async findOne(
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<OrganizationResponseDto> {
+    return await this.organizationsService.findOne(id);
   }
 
   @Patch(':id')
@@ -140,11 +142,12 @@ export class OrganizationsController {
   @ApiUnauthorizedResponse({ description: 'No autenticado.' })
   @ApiForbiddenResponse({ description: 'Acceso restringido a Superadmins.' })
   @ApiNotFoundResponse({ description: 'La organizacion no existe.' })
-  update(
+  async update(
+    @NestRequest() req: AuthenticatedRequest,
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: UpdateOrganizationDto,
-  ) {
-    return this.organizationsService.update(id, dto);
+  ): Promise<OrganizationResponseDto> {
+    return await this.organizationsService.update(id, dto, req.user.userId);
   }
 
   @Delete(':id')
@@ -161,7 +164,10 @@ export class OrganizationsController {
   @ApiForbiddenResponse({ description: 'Acceso restringido a Superadmins.' })
   @ApiNotFoundResponse({ description: 'Organizacion no encontrada.' })
   @ApiConflictResponse({ description: 'La organizacion ya esta inactiva.' })
-  remove(@Param('id', new ParseUUIDPipe()) id: string) {
-    return this.organizationsService.remove(id);
+  async remove(
+    @NestRequest() req: AuthenticatedRequest,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<void> {
+    return await this.organizationsService.remove(id, req.user.userId);
   }
 }

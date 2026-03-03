@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
@@ -30,6 +29,8 @@ import { Role } from '../../enums/role.enum';
 @Injectable()
 export class OrganizationOwnershipGuard implements CanActivate {
   private readonly logger = new Logger(OrganizationOwnershipGuard.name);
+  private readonly userPattern = /\/users\/[\w-]+/;
+  private readonly patientPattern = /\/patients\/[\w-]+/;
 
   constructor(
     @InjectRepository(User)
@@ -50,18 +51,21 @@ export class OrganizationOwnershipGuard implements CanActivate {
     // Detectar el tipo de recurso por la ruta
     const routePath = request.path;
 
-    if (routePath.includes('/users/')) {
+    if (this.userPattern.test(routePath)) {
       // Validar ownership de User (siempre por organización)
       return this.validateUserOwnership(resourceId, user.organizationId);
     }
 
-    if (routePath.includes('/patients/')) {
+    if (this.patientPattern.test(routePath)) {
       // Validar ownership de Patient (multinivel: ADMIN → org, PROFESSIONAL/LAB_OPERATOR → createdBy)
       return this.validatePatientOwnership(resourceId, user);
     }
 
-    // Si no pasa las validaciones, permitir (puede ser un recurso nuevo)
-    return true;
+    // Rechazar recursos no reconocidos (mayor seguridad)
+    this.logger.warn(
+      `Intento de acceso a ruta no permitida: ${routePath} por usuario ${user.userId}`,
+    );
+    throw new ForbiddenException('Recurso no disponible');
   }
 
   private async validateUserOwnership(
@@ -115,10 +119,7 @@ export class OrganizationOwnershipGuard implements CanActivate {
     }
 
     // PROFESSIONAL/LAB_OPERATOR: solo pueden acceder a pacientes que crearon
-    if (
-      user.role === Role.PROFESSIONAL ||
-      user.role === Role.LAB_OPERATOR
-    ) {
+    if (user.role === Role.PROFESSIONAL || user.role === Role.LAB_OPERATOR) {
       if (patient.createdBy !== user.userId) {
         this.logger.warn(
           `Intento de acceso no autorizado: profesional ${user.userId} intenta acceder a paciente ${patientId} creado por ${patient.createdBy}`,

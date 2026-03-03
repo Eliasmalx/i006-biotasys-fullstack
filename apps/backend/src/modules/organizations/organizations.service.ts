@@ -38,14 +38,24 @@ export class OrganizationsService {
 
   /**
    * Crear organización e invitar al administrador
-   * @param superadminId ID del superadmin que crea la organización
+   * @param superadminId ID del superadmin (usuario autenticado) que crea la organización
    * @param dto Datos de la organización y admin a invitar
    * @returns invitationToken (plaintext) para poder probar el flujo en Swagger/QA
+   * @throws ConflictException si email, cif o centerId ya existen
+   * @throws NotFoundException si superadminId no existe
    */
   async createOrganizationAndInviteAdmin(
     superadminId: string,
     dto: CreateOrganizationDto,
   ): Promise<string> {
+    // Validar que el superadmin existe
+    const superadmin = await this.userRepo.findOne({
+      where: { id: superadminId },
+    });
+    if (!superadmin) {
+      throw new NotFoundException('Superadmin no encontrado');
+    }
+
     const email = dto.adminEmail.toLowerCase().trim();
 
     // 1. Validaciones
@@ -152,20 +162,47 @@ export class OrganizationsService {
 
   // --- MÉTODOS DE MANTENIMIENTO ---
 
-  async findAll() {
+  /**
+   * Obtener todas las organizaciones
+   * @returns Lista de todas las organizaciones del sistema
+   */
+  async findAll(): Promise<Organization[]> {
+    this.logger.debug('Listando todas las organizaciones');
     return await this.orgRepo.find();
   }
 
-  async findOne(id: string) {
+  /**
+   * Obtener una organización por ID
+   * @param id ID único de la organización (UUID)
+   * @returns Datos completos de la organización
+   * @throws NotFoundException si la organización no existe
+   */
+  async findOne(id: string): Promise<Organization> {
     const org = await this.orgRepo.findOneBy({ id });
     if (!org) {
-      throw new NotFoundException(`Organización con ID ${id} no encontrada`);
+      this.logger.warn(`Intento de acceso a organización inexistente: ${id}`);
+      const errorMsg = `Organización con ID ${id} no encontrada`;
+      throw new NotFoundException(errorMsg);
     }
     return org;
   }
 
-  async update(id: string, dto: UpdateOrganizationDto) {
+  /**
+   * Actualizar datos de la organización
+   * @param id ID único de la organización (UUID)
+   * @param dto Datos a actualizar
+   * @param userId ID del usuario que realiza la actualización (para auditoría)
+   * @returns Organización actualizada
+   * @throws NotFoundException si la organización no existe
+   */
+  async update(
+    id: string,
+    dto: UpdateOrganizationDto,
+    userId: string,
+  ): Promise<Organization> {
     const org = await this.findOne(id);
+
+    const previousState = { ...org };
 
     const safeUpdates = {
       name: dto.organizationName,
@@ -176,10 +213,31 @@ export class OrganizationsService {
     } as Partial<Organization>;
 
     const updated = this.orgRepo.merge(org, safeUpdates);
-    return await this.orgRepo.save(updated);
+    const result = await this.orgRepo.save(updated);
+
+    // Auditoría: registrar qué cambió
+    const changes = Object.keys(safeUpdates).filter(
+      (key) =>
+        previousState[key as keyof Organization] !==
+        safeUpdates[key as keyof Organization],
+    );
+
+    this.logger.log(
+      `Organización actualizada por ${userId}: ${org.id} | Campos: ${changes.join(', ')}`,
+    );
+
+    return result;
   }
 
-  async remove(id: string): Promise<void> {
+  /**
+   * Desactivar una organización (soft delete)
+   * @param id ID único de la organización (UUID)
+   * @param userId ID del usuario que desactiva la organización (para auditoría)
+   * @returns Promise<void>
+   * @throws NotFoundException si la organización no existe
+   * @throws ConflictException si la organización ya está inactiva
+   */
+  async remove(id: string, userId: string): Promise<void> {
     const org = await this.findOne(id);
 
     if (org.status === OrgStatus.INACTIVE) {
@@ -188,6 +246,9 @@ export class OrganizationsService {
 
     org.status = OrgStatus.INACTIVE;
     await this.orgRepo.save(org);
-    this.logger.log(`Organización desactivada: ${org.name} (${org.id})`);
+
+    this.logger.warn(
+      `Organización desactivada por ${userId}: ${org.name} (${org.id})`,
+    );
   }
 }
