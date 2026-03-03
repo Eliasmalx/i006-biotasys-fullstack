@@ -5,10 +5,13 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
   Index,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { Role } from '../../../common/enums/role.enum';
 import { Exclude } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { Organization } from '../../organizations/entities/organization.entity';
 
 @Entity('users')
 export class User {
@@ -101,4 +104,8 @@ export class User {
   @ApiProperty()
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  @ManyToOne(() => Organization, { eager: false, nullable: true })
+  @JoinColumn({ name: 'organizationId' })
+  organization?: Organization;
 }
