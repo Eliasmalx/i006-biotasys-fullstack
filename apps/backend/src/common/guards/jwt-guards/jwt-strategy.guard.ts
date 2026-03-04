@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
@@ -5,7 +8,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../../modules/users/entities/user.entity';
 import { Role } from '../../enums/role.enum';
-import { OrgStatus } from '../../enums/org-status.enum';
 import config from '../../../config/dotenv.config';
 
 export interface JwtPayload {
@@ -88,15 +90,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Usuario no tiene organización asignada');
     }
 
-    // Validar que la organización está activa (previene acceso a orgs suspendidas/eliminadas)
-    if (user.organization && user.organization.status !== OrgStatus.ACTIVE) {
-      this.logger.warn(
-        `Acceso a organización inactiva: usuario ${user.id} org ${user.organizationId} status ${user.organization.status}`,
-      );
-      throw new UnauthorizedException(
-        'Organización no disponible - acceso denegado',
-      );
-    }
     // Validar que el rol no ha cambiado (seguridad contra cambios de roles sin reautenticación)
     if (payload.role && payload.role !== user.role) {
       this.logger.warn(

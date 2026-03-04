@@ -1,25 +1,18 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { EmailModule } from '../../infrastructure/email/email.module';
-import { OrganizationsModule } from '../organizations/organizations.module';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
-import { CommonGuardsModule } from '../../common/guards/shared/common-guards.module';
-
-// Entidades
 import { User } from './entities/user.entity';
-import { Organization } from '../organizations/entities/organization.entity';
-import { Invitation } from '../invitations/entities/invitation.entity';
+import { EmailVerificationToken } from './entities/email-verification-token.entity';
+import { EmailModule } from '../../infrastructure/email/email.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Organization, Invitation]),
+    TypeOrmModule.forFeature([User, EmailVerificationToken]),
     EmailModule,
-    OrganizationsModule,
-    CommonGuardsModule,
   ],
   controllers: [UsersController],
   providers: [UsersService],
-  exports: [TypeOrmModule, UsersService],
+  exports: [UsersService],
 })
 export class UsersModule {}

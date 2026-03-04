@@ -11,9 +11,10 @@ import {
 import { Role } from '../../../common/enums/role.enum';
 import { Exclude } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { Organization } from '../../organizations/entities/organization.entity';
 
 @Entity('users')
+@Index(['email'], { unique: true })
+@Index(['organizationId'])
 export class User {
   @ApiProperty({
     example: '550e8400-e29b-41d4-a716-446655440000',
@@ -23,7 +24,7 @@ export class User {
   id!: string;
 
   @ApiProperty({
-    example: 'doctor@biotasys.com',
+    example: 'juan@example.com',
     description: 'Correo electrónico único',
   })
   @Column({ unique: true })
@@ -33,49 +34,19 @@ export class User {
   @Exclude()
   password!: string;
 
-  @ApiProperty({ example: 'María Silvia' })
+  @ApiProperty({ example: 'Juan' })
   @Column()
   firstName!: string;
 
-  @ApiProperty({ example: 'García López' })
+  @ApiProperty({ example: 'Pérez García' })
   @Column()
   lastName!: string;
 
-  /**
-   * Identificación legal del profesional
-   */
-  @ApiProperty({ example: '12345678Z', description: 'DNI/NIE del usuario' })
-  @Index({ unique: true })
-  @Column()
-  dni!: string;
-
-  /**
-   * Número de colegiado (opcional para operarios)
-   */
-  @ApiProperty({
-    example: '280812345',
-    required: false,
-    description: 'Número de colegiado profesional',
-  })
-  @Column({ nullable: true })
-  colegiadoNumber?: string;
-
-  /**
-   * ID interno de Biotasys: BIO-2026-AR-XXXXX
-   */
-  @ApiProperty({
-    example: 'BIO-2026-AR-00001',
-    description: 'Identificador interno del sistema',
-  })
-  @Index({ unique: true })
-  @Column()
-  professionalId!: string;
-
-  @ApiProperty({ enum: Role, example: Role.PROFESSIONAL })
+  @ApiProperty({ enum: Role, example: Role.NUTRICIONISTA })
   @Column({
     type: 'enum',
     enum: Role,
-    default: Role.PROFESSIONAL,
+    nullable: true,
   })
   role!: Role;
 
@@ -84,14 +55,18 @@ export class User {
   isActive!: boolean;
 
   @ApiProperty({
+    example: false,
+    description: 'Indica si el email del usuario ha sido verificado',
+  })
+  @Column({ default: false })
+  emailVerified!: boolean;
+
+  @ApiProperty({
     example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     required: false,
   })
   @Column({ type: 'uuid', nullable: true })
   organizationId?: string;
-
-  @Column({ type: 'uuid', nullable: true })
-  invitationId?: string;
 
   @ApiProperty({ required: false })
   @Column({ type: 'timestamp', nullable: true })
@@ -104,8 +79,4 @@ export class User {
   @ApiProperty()
   @UpdateDateColumn()
   updatedAt!: Date;
-
-  @ManyToOne(() => Organization, { eager: false, nullable: true })
-  @JoinColumn({ name: 'organizationId' })
-  organization?: Organization;
 }

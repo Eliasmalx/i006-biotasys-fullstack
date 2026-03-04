@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
   UnauthorizedException,
@@ -9,80 +6,56 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
+import { Repository, LessThan } from 'typeorm';
+import bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { User } from '../users/entities/user.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
 import { LoginDto } from './dto/login.dto';
-import { AcceptInvitationDto } from './dto/accept-invitation.dto';
-import { Invitation } from '../invitations/entities/invitation.entity';
-import { InvitationStatus } from '../../common/enums/invitation-status.enum';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { LoginResponseDto } from './dto/login-response.dto';
+import { Role } from '../../common/enums/role.enum';
+import config from '../../config/dotenv.config';
 
 interface JwtPayload {
   sub: string;
   email: string;
-  role: string;
+  role: Role;
   organizationId?: string;
-}
-
-interface LoginResponse {
-  accessToken: string;
-  user: {
-    id: string;
-    email: string;
-    fullName: string;
-    role: string;
-    organizationId?: string;
-  };
 }
 
 /**
  * Servicio de autenticación
  * Responsabilidades:
  * - Login con email y contraseña
- * - Validación de credenciales
- * - Generación de JWT
- * - Aceptación de invitaciones
+ * - Generación de JWT y Refresh tokens
+ * - Validación de credenciales y email verificado
+ * - Refresco de access tokens
  */
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private readonly saltRounds = 10;
+  private readonly REFRESH_TOKEN_EXPIRY_DAYS = 7;
 
   constructor(
     private readonly jwtService: JwtService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(Invitation)
-    private readonly invitationRepository: Repository<Invitation>,
+    @InjectRepository(RefreshToken)
+    private readonly refreshTokenRepository: Repository<RefreshToken>,
   ) {}
-
-  private getFullName(user: User): string {
-    return `${user.firstName} ${user.lastName}`.trim();
-  }
-
-  private splitFullName(fullName: string): {
-    firstName: string;
-    lastName: string;
-  } {
-    const normalized = fullName.trim().replace(/\s+/g, ' ');
-    const [firstName, ...rest] = normalized.split(' ');
-
-    return {
-      firstName: firstName || 'Usuario',
-      lastName: rest.join(' ') || 'Biotasys',
-    };
-  }
 
   /**
    * Login con email y contraseña
-   * @param loginDto Email y contraseña
-   * @returns AccessToken y datos del usuario
+   * @param loginDto Email, contraseña y rol seleccionado
+   * @returns AccessToken, RefreshToken y datos del usuario
    * @throws UnauthorizedException si las credenciales son inválidas
+   * @throws BadRequestException si el email no está verificado
    */
-  async login(loginDto: LoginDto): Promise<LoginResponse> {
-    const { email, password } = loginDto;
+  async login(loginDto: LoginDto): Promise<LoginResponseDto> {
+    const { email, password, role } = loginDto;
 
-    // Buscar usuario por email
+    // Buscar usuario por email (case-insensitive)
     const user = await this.userRepository.findOne({
       where: { email: email.toLowerCase() },
     });
@@ -104,176 +77,189 @@ export class AuthService {
       );
     }
 
+    // Validar que el email está verificado
+    if (!user.emailVerified) {
+      throw new BadRequestException(
+        'Tu email aún no ha sido verificado. Revisa tu bandeja de entrada para el enlace de verificación',
+      );
+    }
+
     // Actualizar último login
     const now = new Date();
     await this.userRepository.update(user.id, { lastLoginAt: now });
 
-    // Generar JWT
-    const accessToken = this.generateJWT(user);
+    // Generar access token con el role del login y refresh token
+    const accessToken = this.generateAccessToken(user, role);
+    const refreshToken = await this.generateRefreshToken(user.id, role);
 
-    this.logger.log(`Usuario ${user.email} inició sesión exitosamente`);
+    this.logger.log(
+      `Usuario ${user.email} inició sesión con rol ${role} exitosamente`,
+    );
 
     return {
       accessToken,
+      refreshToken: refreshToken.token,
+      expiresIn: config.jwtExpiresIn,
       user: {
         id: user.id,
         email: user.email,
-        fullName: this.getFullName(user),
-        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role,
         organizationId: user.organizationId,
       },
     };
   }
 
   /**
-   * Genera un JWT firmado
+   * Genera un access token JWT con el rol seleccionado
    * @param user Entidad del usuario
+   * @param role Rol seleccionado en el login
    * @returns Token JWT
    */
-  private generateJWT(user: User): string {
+  private generateAccessToken(user: User, role: Role): string {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      role: user.role,
+      role,
       organizationId: user.organizationId,
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
     return this.jwtService.sign(payload);
   }
 
   /**
-   * Valida email y contraseña (usado por Passport LocalStrategy)
-   * @param email Email del usuario
-   * @param password Contraseña en texto plano
-   * @returns Usuario si las credenciales son válidas
-   * @throws UnauthorizedException si son inválidas
+   * Genera un refresh token y lo guarda en la BD
+   * @param userId ID del usuario
+   * @param role Rol seleccionado en el login
+   * @returns RefreshToken entity
    */
-  async validateUser(email: string, password: string): Promise<User> {
-    const user = await this.userRepository.findOne({
-      where: { email: email.toLowerCase() },
+  private async generateRefreshToken(
+    userId: string,
+    role: Role,
+  ): Promise<RefreshToken> {
+    // Generar token aleatorio
+    const tokenString = randomBytes(32).toString('hex').toUpperCase();
+
+    // Hash del token para almacenar en BD (no almacenar el token en texto plano)
+    const tokenHash = await bcrypt.hash(tokenString, 10);
+
+    // Calcular fecha de expiración
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + this.REFRESH_TOKEN_EXPIRY_DAYS);
+
+    // Crear y guardar el token
+    const refreshToken = this.refreshTokenRepository.create({
+      userId,
+      token: tokenString,
+      tokenHash,
+      role,
+      expiresAt,
+      isRevoked: false,
     });
 
-    if (!user) {
-      throw new UnauthorizedException('Usuario no encontrado');
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Contraseña incorrecta');
-    }
-
-    if (!user.isActive) {
-      throw new UnauthorizedException('Usuario inactivo');
-    }
-
-    return user;
+    return this.refreshTokenRepository.save(refreshToken);
   }
 
   /**
-   * Acepta una invitación y crea el usuario
-   * @param dto Token, nombre y contraseña
-   * @returns Usuario creado y JWT
-   * @description El token se valida contra el hash y la invitación se marca como ACCEPTED ANTES de crear el usuario para evitar race conditions
+   * Refresca el access token usando un refresh token válido
+   * @param refreshTokenDto Contiene el refresh token
+   * @returns Nuevo access token
+   * @throws UnauthorizedException si el token es inválido o expiró
+   * @throws BadRequestException si el token fue revocado
    */
-  async acceptInvitation(dto: AcceptInvitationDto): Promise<LoginResponse> {
-    const { token, fullName, password } = dto;
+  async refreshAccessToken(
+    refreshTokenDto: RefreshTokenDto,
+  ): Promise<{ accessToken: string; expiresIn: number }> {
+    const { refreshToken } = refreshTokenDto;
 
-    // Validar entrada
-    if (!token || !fullName || !password) {
-      throw new BadRequestException(
-        'Token, nombre y contraseña son requeridos',
-      );
-    }
+    try {
+      // Buscar el refresh token en BD
+      const storedToken = await this.refreshTokenRepository.findOne({
+        where: { token: refreshToken },
+        relations: ['user'],
+      });
 
-    if (password.trim().length < 8) {
-      throw new BadRequestException(
-        'Contraseña debe tener al menos 8 caracteres',
-      );
-    }
-
-    // 1. Buscar invitación pendiente con token válido
-    const invitations = await this.invitationRepository.find({
-      where: {
-        status: InvitationStatus.PENDING,
-      },
-    });
-
-    let validInvitation: Invitation | null = null;
-
-    // Comparar token con hash y validar expiración
-    for (const inv of invitations) {
-      // Validar expiración primero (más rápido)
-      if (new Date() > inv.expiresAt) {
-        continue;
+      if (!storedToken) {
+        throw new UnauthorizedException('Refresh token inválido');
       }
 
-      // Validar token
-      const isValid = await bcrypt.compare(token, inv.tokenHash);
-      if (isValid) {
-        validInvitation = inv;
-        break;
+      // Validar que no esté revocado
+      if (storedToken.isRevoked) {
+        throw new BadRequestException(
+          'Refresh token ha sido revocado. Por favor, vuelve a loguear',
+        );
       }
+
+      // Validar que no esté expirado
+      if (new Date() > storedToken.expiresAt) {
+        throw new UnauthorizedException('Refresh token expirado');
+      }
+
+      // Validar que el usuario existe y está activo
+      const user = storedToken.user;
+      if (!user || !user.isActive) {
+        throw new UnauthorizedException('Usuario inactivo o no encontrado');
+      }
+
+      // Generar nuevo access token con el mismo rol del refresh token
+      const newAccessToken = this.generateAccessToken(user, storedToken.role);
+
+      this.logger.log(`Access token refrescado para usuario ${user.email}`);
+
+      return {
+        accessToken: newAccessToken,
+        expiresIn: config.jwtExpiresIn,
+      };
+    } catch (error) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      this.logger.error('Error refrescando token:', error);
+      throw new UnauthorizedException('Error al refrescar el token');
     }
+  }
 
-    if (!validInvitation) {
-      throw new BadRequestException('Token de invitación inválido o expirado');
+  /**
+   * Revoca un refresh token (logout)
+   * @param refreshToken Token a revocar
+   */
+  async revokeRefreshToken(refreshToken: string): Promise<void> {
+    try {
+      const token = await this.refreshTokenRepository.findOne({
+        where: { token: refreshToken },
+      });
+
+      if (token) {
+        token.isRevoked = true;
+        await this.refreshTokenRepository.save(token);
+        this.logger.log('Refresh token revocado (logout)');
+      }
+    } catch (error) {
+      this.logger.error('Error revocando refresh token:', error);
+      // No lanzamos error, simplemente registramos
     }
+  }
 
-    // 2. Marcar invitación como ACCEPTED INMEDIATAMENTE
-    // Esto previene race conditions: si otro request intenta con el mismo token,
-    // no encontrará una invitación PENDING
-    validInvitation.status = InvitationStatus.ACCEPTED;
-    validInvitation.acceptedAt = new Date();
-    await this.invitationRepository.save(validInvitation);
+  /**
+   * Limpia tokens expirados de la BD (operación de mantenimiento)
+   */
+  async cleanupExpiredTokens(): Promise<void> {
+    try {
+      const result = await this.refreshTokenRepository.delete({
+        expiresAt: LessThan(new Date()),
+      });
 
-    // 3. Validar que el email no existe
-    const existingUser = await this.userRepository.findOne({
-      where: { email: validInvitation.email },
-    });
-
-    if (existingUser) {
-      throw new BadRequestException(
-        `El email ${validInvitation.email} ya está registrado`,
+      this.logger.log(
+        `Limpieza de tokens expirados: ${result.affected} tokens eliminados`,
       );
+    } catch (error) {
+      this.logger.error('Error limpiando tokens expirados:', error);
     }
-
-    // 4. Crear usuario
-    const passwordHash = await bcrypt.hash(password, this.saltRounds);
-    const { firstName, lastName } = this.splitFullName(fullName);
-
-    const user = this.userRepository.create({
-      email: validInvitation.email,
-      password: passwordHash,
-      firstName,
-      lastName,
-      dni: validInvitation.dni,
-      // colegiadoNumber solo para PROFESSIONAL y LAB_OPERATOR (invitaciones de admin)
-      // Para ADMIN, se ignora
-      professionalId: validInvitation.professionalId,
-      role: validInvitation.role,
-      organizationId: validInvitation.organizationId,
-      invitationId: validInvitation.id,
-      isActive: true,
-    });
-
-    const savedUser = await this.userRepository.save(user);
-
-    // Generar JWT
-    const accessToken = this.generateJWT(savedUser);
-
-    this.logger.log(
-      `Usuario ${savedUser.email} (${savedUser.role}) aceptó invitación`,
-    );
-
-    return {
-      accessToken,
-      user: {
-        id: savedUser.id,
-        email: savedUser.email,
-        fullName: this.getFullName(savedUser),
-        role: savedUser.role,
-        organizationId: savedUser.organizationId,
-      },
-    };
   }
 }

@@ -12,8 +12,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../../modules/users/entities/user.entity';
-import { Patien } from '../../../modules/patients/entities/patients.entity';
-import { Role } from '../../enums/role.enum';
 
 /**
  * OrganizationOwnershipGuard
@@ -35,8 +33,6 @@ export class OrganizationOwnershipGuard implements CanActivate {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(Patien)
-    private readonly patientRepository: Repository<Patien>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -57,8 +53,7 @@ export class OrganizationOwnershipGuard implements CanActivate {
     }
 
     if (this.patientPattern.test(routePath)) {
-      // Validar ownership de Patient (multinivel: ADMIN → org, PROFESSIONAL/LAB_OPERATOR → createdBy)
-      return this.validatePatientOwnership(resourceId, user);
+      return this.validateUserOwnership(resourceId, user);
     }
 
     // Rechazar recursos no reconocidos (mayor seguridad)
@@ -91,60 +86,5 @@ export class OrganizationOwnershipGuard implements CanActivate {
     }
 
     return true;
-  }
-
-  private async validatePatientOwnership(
-    patientId: string,
-    user: { userId: string; role: Role; organizationId: string },
-  ): Promise<boolean> {
-    const patient = await this.patientRepository.findOne({
-      where: { id: patientId },
-    });
-
-    if (!patient) {
-      throw new NotFoundException('Paciente no encontrado');
-    }
-
-    // ADMIN: puede acceder a cualquier paciente de su organización
-    if (user.role === Role.ADMIN) {
-      if (patient.organizationId !== user.organizationId) {
-        this.logger.warn(
-          `Intento de acceso no autorizado: paciente ${patientId} no pertenece a org ${user.organizationId}`,
-        );
-        throw new ForbiddenException(
-          'El paciente no pertenece a tu organización',
-        );
-      }
-      return true;
-    }
-
-    // PROFESSIONAL/LAB_OPERATOR: solo pueden acceder a pacientes que crearon
-    if (user.role === Role.PROFESSIONAL || user.role === Role.LAB_OPERATOR) {
-      if (patient.createdBy !== user.userId) {
-        this.logger.warn(
-          `Intento de acceso no autorizado: profesional ${user.userId} intenta acceder a paciente ${patientId} creado por ${patient.createdBy}`,
-        );
-        throw new ForbiddenException(
-          'Solo puedes acceder a pacientes que creaste',
-        );
-      }
-
-      // Validar que el paciente está en la misma organización
-      if (patient.organizationId !== user.organizationId) {
-        this.logger.warn(
-          `Intento de acceso intercomunicación: paciente ${patientId} de org ${patient.organizationId} accedido por usuario de org ${user.organizationId}`,
-        );
-        throw new ForbiddenException(
-          'El paciente no pertenece a tu organización',
-        );
-      }
-
-      return true;
-    }
-
-    // Otros roles no tienen acceso a pacientes
-    throw new ForbiddenException(
-      'Tu rol no tiene permiso para acceder a pacientes',
-    );
   }
 }

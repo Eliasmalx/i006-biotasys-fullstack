@@ -5,6 +5,7 @@ import config from '../../../config/dotenv.config';
 import {
   generateAdminInvitationEmail,
   generateUserInvitationEmail,
+  generateEmailVerificationTemplate,
 } from '../template';
 
 @Injectable()
@@ -169,5 +170,28 @@ export class EmailService {
     });
 
     await this.sendEmail(to, 'Invitación para Biotasys', html);
+  }
+
+  /**
+   * Envía email de verificación de dirección
+   * @param to Email del usuario
+   * @param firstName Nombre del usuario
+   * @param verificationLink Link de verificación con token
+   * @param expiryMinutes Minutos hasta que expire el enlace
+   */
+  async sendEmailVerificationEmail(
+    to: string,
+    firstName: string,
+    verificationLink: string,
+    expiryMinutes: number = 15,
+  ): Promise<void> {
+    const html = generateEmailVerificationTemplate({
+      userEmail: to,
+      firstName,
+      verificationLink,
+      expiryMinutes,
+    });
+
+    await this.sendEmail(to, 'Verifica tu correo electrónico - Biotasys', html);
   }
 }

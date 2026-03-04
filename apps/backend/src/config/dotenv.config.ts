@@ -11,7 +11,7 @@ function parseDurationToSeconds(duration: string): number {
   if (!duration) return 3600; // default 1 hora
 
   const match = duration.match(/^(\d+)([smhd])$/i);
-  if (!match) return 3600; // default 1 hora si no matches
+  if (!match) return 3600;
 
   const [, value, unit] = match;
   const num = parseInt(value, 10);

@@ -1,25 +1,35 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsEmail, IsNotEmpty, MinLength } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsEnum } from 'class-validator';
+import { Role } from '../../../common/enums/role.enum';
 
 /**
  * DTO para login de usuario
- * POST /api/auth/login
+ * El rol se elige en el login, no en el registro
+ * Permite que el mismo usuario ingrese con diferentes roles
  */
 export class LoginDto {
   @ApiProperty({
-    example: 'superadmin@local.test',
-    description: 'Email del usuario para iniciar sesión',
+    example: 'juan@example.com',
+    description: 'Email del usuario',
   })
-  @IsEmail({}, { message: 'Debe proporcionar un email válido' })
-  @IsNotEmpty({ message: 'El email es requerido' })
+  @IsEmail({}, { message: 'Email inválido' })
   email!: string;
 
   @ApiProperty({
-    example: 'password123',
-    description: 'Contraseña de acceso (mínimo 8 caracteres)',
+    example: 'SecurePass123!',
+    description: 'Contraseña del usuario',
   })
   @IsString()
-  @IsNotEmpty({ message: 'La contraseña es requerida' })
   @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
   password!: string;
+
+  @ApiProperty({
+    example: 'nutricionista',
+    description: 'Rol a usar en esta sesión (nutricionista o laboratorio)',
+    enum: Role,
+  })
+  @IsEnum(Role, {
+    message: 'El rol debe ser nutricionista o laboratorio',
+  })
+  role!: Role;
 }

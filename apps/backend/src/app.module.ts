@@ -1,33 +1,24 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { WinstonModule } from 'nest-winston';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
-import { EmailModule } from './infrastructure/email/email.module';
-import { DevModule } from './dev/dev.module';
 import { winstonConfig } from './config/winston.config';
 import { ormConfig } from './config/orm.config';
-import { InvitationsModule } from './modules/invitations/invitations.module';
-import { OrganizationsModule } from './modules/organizations/organizations.module';
-import { PatiensModule } from './modules/patients/patients.module';
-import { CommonGuardsModule } from './common/guards/shared/common-guards.module';
-import { StudiesModule } from './modules/studies/studies.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
     TypeOrmModule.forRoot(ormConfig),
     WinstonModule.forRoot(winstonConfig),
     AuthModule,
     UsersModule,
-    EmailModule,
-    InvitationsModule,
-    OrganizationsModule,
-    ...(process.env.NODE_ENV === 'production' ? [] : [DevModule]),
-    PatiensModule,
-    CommonGuardsModule,
-    StudiesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

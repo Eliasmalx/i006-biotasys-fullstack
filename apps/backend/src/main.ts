@@ -3,7 +3,6 @@ import { AppModule } from './app.module';
 import { morganConfig } from './config/morgan.config';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { ValidationPipe } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -37,21 +36,6 @@ async function bootstrap() {
       transform: true,
     }),
   );
-
-  // Configurar prefijo global de rutas
-  app.setGlobalPrefix('api');
-
-  const config = new DocumentBuilder()
-    .setTitle('Biotasys CDSS API')
-    .setDescription(
-      'Servicio de soporte a la decisión clínica basado en microbiota intestinal',
-    )
-    .setVersion('1.0')
-    .addBearerAuth() // Esto permite que el front pegue el JWT para probar los endpoints protegidos
-    .build();
-
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT || 3000;
 

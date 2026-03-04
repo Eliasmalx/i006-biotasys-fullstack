@@ -1,25 +1,23 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { User } from '../users/entities/user.entity';
-import { Invitation } from '../invitations/entities/invitation.entity';
-import { JwtStrategy } from '../../common/guards/jwt-guards';
+import { RefreshToken } from './entities/refresh-token.entity';
 import config from '../../config/dotenv.config';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Invitation]),
-    PassportModule,
+    TypeOrmModule.forFeature([User, RefreshToken]),
     JwtModule.register({
       secret: config.jwtSecret,
       signOptions: { expiresIn: config.jwtExpiresIn },
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [JwtModule, TypeOrmModule],
+  providers: [AuthService],
 })
 export class AuthModule {}

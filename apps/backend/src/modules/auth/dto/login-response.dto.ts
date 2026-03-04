@@ -1,29 +1,37 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Role } from '../../../common/enums/role.enum';
 
-class UserResponse {
-  @ApiProperty({ example: 'uuid-123-456' })
-  id!: string;
-
-  @ApiProperty({ example: 'superadmin@biotasys.com' })
-  email!: string;
-
-  @ApiProperty({ example: 'Mi Superadmin' })
-  fullName!: string;
-
-  @ApiProperty({ example: 'superadmin' })
-  role!: string;
-
-  @ApiProperty({ example: 'uuid-org-789', required: false })
-  organizationId?: string;
-}
-
+/**
+ * DTO de respuesta para login
+ */
 export class LoginResponseDto {
   @ApiProperty({
     example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-    description: 'JWT para autenticar las siguientes peticiones',
+    description: 'Token de acceso JWT (30 minutos)',
   })
   accessToken!: string;
 
-  @ApiProperty({ type: UserResponse })
-  user!: UserResponse;
+  @ApiProperty({
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    description: 'Token para refrescar el acceso (7 días)',
+  })
+  refreshToken!: string;
+
+  @ApiProperty({
+    example: 1800,
+    description: 'Segundos hasta que expire el access token',
+  })
+  expiresIn!: number;
+
+  @ApiProperty({
+    description: 'Datos básicos del usuario logueado',
+  })
+  user!: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: Role;
+    organizationId?: string;
+  };
 }

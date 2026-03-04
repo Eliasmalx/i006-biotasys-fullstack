@@ -1,65 +1,83 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiOkResponse,
-  ApiCreatedResponse,
-  ApiBadRequestResponse,
-  ApiUnauthorizedResponse,
-} from '@nestjs/swagger';
-
+  Controller,
+  Post,
+  Body,
+  HttpStatus,
+} from '@nestjs/common';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 
-interface LoginResponse {
-  accessToken: string;
-  user: {
-    id: string;
-    email: string;
-    fullName: string;
-    role: string;
-    organizationId?: string;
-  };
-}
-
-@ApiTags('Autenticacion')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Inicio de sesion de usuario' })
-  @ApiOkResponse({
-    description: 'Login exitoso, retorna token y datos del usuario',
+  @ApiOperation({
+    summary: 'Login de usuario',
+    description: 'Valida credenciales y retorna JWT + Refresh token',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Login exitoso',
     type: LoginResponseDto,
   })
-  @ApiBadRequestResponse({ description: 'Payload invalido' })
-  @ApiUnauthorizedResponse({
-    description: 'Credenciales invalidas o usuario inactivo',
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Credenciales inválidas o usuario inactivo',
   })
-  async login(@Body() loginDto: LoginDto): Promise<LoginResponse> {
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Email no verificado',
+  })
+  async login(@Body() loginDto: LoginDto): Promise<LoginResponseDto> {
     return this.authService.login(loginDto);
   }
 
-  @Post('accept-invitation')
-  @HttpCode(HttpStatus.CREATED)
+  @Post('refresh')
   @ApiOperation({
-    summary: 'Aceptar invitacion y registrarse en la plataforma',
+    summary: 'Refrescar access token',
+    description: 'Usa refresh token para obtener un nuevo access token',
   })
-  @ApiCreatedResponse({
-    description: 'Usuario registrado correctamente',
-    type: LoginResponseDto,
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Token refrescado exitosamente',
+    schema: {
+      example: {
+        accessToken: 'eyJhbGciOiJIUzI1NiIs...',
+        expiresIn: 1800,
+      },
+    },
   })
-  @ApiBadRequestResponse({
-    description:
-      'Token invalido/expirado, datos invalidos o email ya registrado',
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Refresh token inválido o expirado',
   })
-  async acceptInvitation(
-    @Body() dto: AcceptInvitationDto,
-  ): Promise<LoginResponse> {
-    return this.authService.acceptInvitation(dto);
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Refresh token revocado',
+  })
+  async refresh(
+    @Body() refreshTokenDto: RefreshTokenDto,
+  ): Promise<{ accessToken: string; expiresIn: number }> {
+    return this.authService.refreshAccessToken(refreshTokenDto);
+  }
+
+  @Post('logout')
+  @ApiOperation({
+    summary: 'Logout (revoca refresh token)',
+    description: 'Invalida el refresh token para cerrar sesión',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Logout exitoso',
+  })
+  async logout(
+    @Body() refreshTokenDto: RefreshTokenDto,
+  ): Promise<{ message: string }> {
+    await this.authService.revokeRefreshToken(refreshTokenDto.refreshToken);
+    return { message: 'Sesión cerrada exitosamente' };
   }
 }

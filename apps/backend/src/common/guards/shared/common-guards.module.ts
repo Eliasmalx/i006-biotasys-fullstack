@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../../../modules/users/entities/user.entity';
-import { Patien } from '../../../modules/patients/entities/patients.entity';
 import { OrganizationOwnershipGuard } from '../owner-ship/organization-ownership.guard';
 
 /**
@@ -10,7 +9,7 @@ import { OrganizationOwnershipGuard } from '../owner-ship/organization-ownership
  * Evita dependencias circulares entre módulos
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Patien])],
+  imports: [TypeOrmModule.forFeature([User])],
   providers: [OrganizationOwnershipGuard],
   exports: [OrganizationOwnershipGuard, TypeOrmModule],
 })
