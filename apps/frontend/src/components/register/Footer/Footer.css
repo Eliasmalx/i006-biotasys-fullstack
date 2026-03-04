@@ -1,0 +1,30 @@
+.register-footer {
+  padding: 20px 0;
+  text-align: center;
+  font-size: 13px;
+  color: #8b92a9;
+  margin-top: auto;
+}
+
+.register-footer__links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.register-footer__links a {
+  color: #8b92a9;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease;
+}
+
+.register-footer__links a:hover {
+  color: #5a6484;
+}
+
+.register-footer__separator {
+  color: #e2e5f1;
+  user-select: none;
+}

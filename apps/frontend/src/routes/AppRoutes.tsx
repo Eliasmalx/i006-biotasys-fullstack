@@ -5,6 +5,10 @@ import PublicRoute from "./PublicRoute";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
+import { AcceptInvitationPage } from "../pages/AcceptInvitation";
+import { PasswordRecovery } from "../pages/PasswordRecovery";
+import { PasswordReset } from "../pages/PasswordReset";
+import { ForgotPassword } from "../pages/ForgotPassword";
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -34,6 +38,10 @@ export const AppRoutes: React.FC = () => {
         }
       />
       <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/invitations/accept/:token" element={<AcceptInvitationPage />} />
+      <Route path="/passwoedRecovery" element={<PasswordRecovery />} />
+      <Route path="/passwoedReset" element={<PasswordReset />} />
+      <Route path="/forgotPassword" element={<ForgotPassword />} />
     </Routes>
   );
 };

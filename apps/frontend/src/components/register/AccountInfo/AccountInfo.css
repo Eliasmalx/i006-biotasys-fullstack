@@ -1,0 +1,186 @@
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.account-info {
+  animation: fadeInUp 0.35s ease both;
+}
+
+.account-info__title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1e2a4a;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.account-info__subtitle {
+  font-size: 14px;
+  color: #5a6484;
+  line-height: 1.65;
+  margin-bottom: 32px;
+}
+
+.account-info__subtitle a {
+  color: #1e2a4a;
+  font-weight: 500;
+}
+
+/* ---- Organization Card ---- */
+.account-info__org-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #ffffff;
+  border: 1px solid #e2e5f1;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.account-info__org-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.account-info__org-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e2a4a;
+}
+
+.account-info__org-specialty {
+  font-size: 13px;
+  color: #8b92a9;
+}
+
+.account-info__org-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.account-info__org-id-label {
+  font-size: 11px;
+  color: #8b92a9;
+  white-space: nowrap;
+}
+
+.account-info__org-id-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  background-color: #f0f2f8;
+  border: 1px solid #d8dce8;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #4a5274;
+  font-family: monospace;
+  letter-spacing: 0.02em;
+}
+
+.account-info__org-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ---- Details Section ---- */
+.account-info__details {
+  background-color: #ffffff;
+  border: 1px solid #e2e5f1;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 40px;
+}
+
+.account-info__detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 20px;
+}
+
+.account-info__detail-row + .account-info__detail-row {
+  border-top: 1px solid #edf0f7;
+}
+
+.account-info__detail-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  color: #8b92a9;
+}
+
+.account-info__detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.account-info__detail-label {
+  font-size: 13px;
+  color: #8b92a9;
+}
+
+.account-info__detail-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e2a4a;
+}
+
+.account-info__detail-hint {
+  font-size: 11px;
+  color: #a3a9be;
+  line-height: 1.65;
+  margin-top: 2px;
+}
+
+/* ---- Continue Button ---- */
+.account-info__btn {
+  width: 100%;
+  padding: 16px 24px;
+  background-color: #1a2b6d;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.account-info__btn:hover {
+  background-color: #15225a;
+}
+
+.account-info__btn:active {
+  transform: scale(0.995);
+}
+
+@media (max-width: 600px) {
+  .account-info__org-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .account-info__org-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
