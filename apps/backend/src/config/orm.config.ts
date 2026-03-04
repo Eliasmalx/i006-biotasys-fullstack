@@ -21,7 +21,7 @@ export const ormConfig: TypeOrmModuleOptions & DataSourceOptions = {
 
   // Sincronización y logging
   synchronize: config.nodeEnv === 'development', // Solo en desarrollo
-  logging: config.nodeEnv === 'development' ? ['query', 'error'] : ['error'],
+  logging: config.db.logQueries ? ['query', 'error'] : ['error'],
 
   // Pool de conexiones
   poolSize: 10,
@@ -32,7 +32,7 @@ export const ormConfig: TypeOrmModuleOptions & DataSourceOptions = {
 
   // Opciones adicionales
   ssl: config.nodeEnv === 'production',
-  dropSchema: false,
+  dropSchema: process.env.DROP_SCHEMA === 'true', // Limpiar BD en inicio
   retryAttempts: 5,
   retryDelay: 3000,
 };
