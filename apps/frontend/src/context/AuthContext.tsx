@@ -4,7 +4,7 @@ import { storage } from "../utils/storage";
 
 interface AuthContextType {
   authState: AuthState;
-  login: (user: User) => void;
+  login: (user: User, token: string) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -66,10 +66,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  const login = (user: User) => {
-    storage.setUser(user);
-    dispatch({ type: "SET_USER", payload: user });
-  };
+  const login = (user: User, token: string) => {
+  storage.setUser(user);
+  storage.setToken(token);
+
+  dispatch({ type: "SET_USER", payload: user });
+};
+
 
   const logout = () => {
     storage.clear();

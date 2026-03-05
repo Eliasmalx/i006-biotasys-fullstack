@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { User } from "../types";
-import { Button } from "../components/common/Button";
-import { getAIGreeting } from "../services/service";
-import { api } from "../services/api";
-import { useAuth } from "../hooks/useAuth";
+import { User } from "../../types";
+import { Button } from "../../components/common/Button";
+import { getAIGreeting } from "../../services/service";
+import { api } from "../../services/api";
+import { useAuth } from "../../hooks/useAuth";
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();

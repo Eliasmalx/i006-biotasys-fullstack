@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Input } from "../components/common/Input";
-import { Button } from "../components/common/Button";
-import { User } from "../types";
-import { api } from "../services/api";
-import { useAuth } from "../hooks/useAuth";
+import { Input } from "../../components/common/Input";
+import { Button } from "../../components/common/Button";
+import { User } from "../../types";
+import { api } from "../../services/api";
+import { useAuth } from "../../hooks/useAuth";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ const Login: React.FC = () => {
 
     try {
       const response = await api.login({ email, password });
-      login(response.user);
+      login(response.user, response.accessToken);
       navigate("/dashboard");
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");
@@ -133,7 +133,9 @@ const Login: React.FC = () => {
               </Link>
             </div>
 
-            <Button type="submit" className="w-full mt-4" isLoading={isLoading}>
+            <Button type="submit" 
+                    className="w-full mt-4" 
+                    isLoading={isLoading}>
               Iniciar sesión
             </Button>
           </form>
@@ -142,7 +144,7 @@ const Login: React.FC = () => {
             <p className="text-slate-400 text-sm">
               No tienes una cuenta?{" "}
               <Link
-                to="/passwoedReset"
+                to="/dashboardLaboratory"
                 className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors"
               >
                 Crear cuenta
