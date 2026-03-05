@@ -50,6 +50,14 @@ export interface IConfig {
     fromName: string;
     secure: boolean;
   };
+  ai: {
+    serviceUrl: string;
+    serviceApiKey: string;
+    callbackApiKey: string;
+    backendPublicUrl: string;
+    requestTimeoutMs: number;
+    maxRetries: number;
+  };
 }
 
 /**
@@ -111,6 +119,19 @@ export const config: IConfig = {
     password: process.env.EMAIL_PASSWORD || '',
     fromName: process.env.EMAIL_FROM_NAME || 'Biotasys',
     secure: process.env.EMAIL_SECURE === 'true',
+  },
+
+  // AI / Python processing service
+  ai: {
+    serviceUrl: process.env.AI_SERVICE_URL || '',
+    serviceApiKey: process.env.PYTHON_SERVICE_API_KEY || '',
+    callbackApiKey: process.env.PYTHON_CALLBACK_API_KEY || '',
+    backendPublicUrl: process.env.BACKEND_PUBLIC_URL || '',
+    requestTimeoutMs: parseInt(
+      process.env.AI_REQUEST_TIMEOUT_MS || '15000',
+      10,
+    ),
+    maxRetries: parseInt(process.env.AI_MAX_RETRIES || '3', 10),
   },
 };
 

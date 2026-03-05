@@ -6,6 +6,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { StudiesModule } from './modules/studies/studies.module';
 import { winstonConfig } from './config/winston.config';
 import { ormConfig } from './config/orm.config';
 
@@ -19,6 +20,7 @@ import { ormConfig } from './config/orm.config';
     WinstonModule.forRoot(winstonConfig),
     AuthModule,
     UsersModule,
+    StudiesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
