@@ -192,6 +192,10 @@ export class EmailService {
       expiryMinutes,
     });
 
-    await this.sendEmail(to, 'Verifica tu correo electrónico - Biotasys', html);
+    await this.sendEmail(
+      to,
+      'Verifica tu correo electrónico - Biotasys',
+      html,
+    );
   }
 }

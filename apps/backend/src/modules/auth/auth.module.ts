@@ -6,15 +6,15 @@ import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { JwtStrategy } from './strategies/jwt.strategy';
 import { User } from '../users/entities/user.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import config from '../../config/dotenv.config';
-import { JwtStrategy } from '../../common/guards/jwt-guards';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, RefreshToken]),
     PassportModule,
+    TypeOrmModule.forFeature([User, RefreshToken]),
     JwtModule.register({
       secret: config.jwtSecret,
       signOptions: { expiresIn: config.jwtExpiresIn },

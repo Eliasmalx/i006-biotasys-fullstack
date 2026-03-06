@@ -77,28 +77,24 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     currentUser: AuthenticatedUser,
   ): Promise<StudyResponseDto> {
     this.assertRole(currentUser, Role.NUTRICIONISTA);
-    const organizationId = this.getOrganizationIdOrFail(currentUser);
 
+    // Verificar que el laboratorio existe y tiene el rol correcto
     const laboratory = await this.userRepository.findOne({
       where: {
         id: dto.laboratoryId,
         role: Role.LABORATORIO,
-        organizationId,
       },
     });
 
     if (!laboratory) {
-      throw new BadRequestException(
-        'Laboratorio invalido o fuera de la organizacion',
-      );
+      throw new BadRequestException('Laboratorio no encontrado o inválido');
     }
 
-    const studyCode = await this.generateStudyCode(organizationId);
+    const studyCode = await this.generateStudyCode(currentUser.userId);
     const now = new Date();
 
     const study = this.studyRepository.create({
       studyCode,
-      organizationId,
       nutritionistId: currentUser.userId,
       laboratoryId: dto.laboratoryId,
       patientCode: dto.patientCode,

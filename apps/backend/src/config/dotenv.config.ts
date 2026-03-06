@@ -51,12 +51,12 @@ export interface IConfig {
     secure: boolean;
   };
   ai: {
-    serviceUrl: string;
-    serviceApiKey: string;
     callbackApiKey: string;
-    backendPublicUrl: string;
-    requestTimeoutMs: number;
     maxRetries: number;
+    serviceUrl: string;
+    requestTimeoutMs: number;
+    backendPublicUrl: string;
+    serviceApiKey: string;
   };
 }
 
@@ -121,17 +121,15 @@ export const config: IConfig = {
     secure: process.env.EMAIL_SECURE === 'true',
   },
 
-  // AI / Python processing service
+  // AI Integration
   ai: {
-    serviceUrl: process.env.AI_SERVICE_URL || '',
-    serviceApiKey: process.env.PYTHON_SERVICE_API_KEY || '',
-    callbackApiKey: process.env.PYTHON_CALLBACK_API_KEY || '',
-    backendPublicUrl: process.env.BACKEND_PUBLIC_URL || '',
-    requestTimeoutMs: parseInt(
-      process.env.AI_REQUEST_TIMEOUT_MS || '15000',
-      10,
-    ),
+    callbackApiKey: process.env.AI_CALLBACK_API_KEY || 'default-callback-key',
     maxRetries: parseInt(process.env.AI_MAX_RETRIES || '3', 10),
+    serviceUrl: process.env.AI_SERVICE_URL || 'http://localhost:8000',
+    requestTimeoutMs: parseInt(process.env.AI_REQUEST_TIMEOUT_MS || '30000', 10),
+    backendPublicUrl:
+      process.env.AI_BACKEND_PUBLIC_URL || `http://localhost:${process.env.PORT || 3000}`,
+    serviceApiKey: process.env.AI_SERVICE_API_KEY || '',
   },
 };
 
