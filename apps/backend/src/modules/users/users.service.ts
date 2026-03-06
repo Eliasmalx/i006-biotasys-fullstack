@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
@@ -17,6 +18,7 @@ import { EmailService } from '../../infrastructure/email/services/email.service'
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
   private readonly VERIFICATION_TOKEN_EXPIRY_MINUTES = 15;
   private readonly VERIFICATION_TOKEN_LENGTH = 32;
 
@@ -99,12 +101,19 @@ export class UsersService {
     }
   }
 
-  findAll() {
-    return `This action returns all users`;
+  async findAll(): Promise<UserResponseDto[]> {
+    const users = await this.userRepository.find();
+    return users.map((user) => this.mapUserToResponseDto(user));
   }
 
-  findOne(id: string) {
-    return `This action returns a #${id} user`;
+  async findOne(id: string): Promise<UserResponseDto> {
+    const user = await this.userRepository.findOne({ where: { id } });
+
+    if (!user) {
+      throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+    }
+
+    return this.mapUserToResponseDto(user);
   }
 
   /**
@@ -206,8 +215,17 @@ export class UsersService {
     }
   }
 
-  remove(id: string) {
-    return `This action removes a #${id} user`;
+  async remove(id: string): Promise<{ message: string }> {
+    const user = await this.userRepository.findOne({ where: { id } });
+
+    if (!user) {
+      throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+    }
+
+    await this.userRepository.remove(user);
+    this.logger.log(`Usuario ${user.email} eliminado`);
+
+    return { message: `Usuario eliminado exitosamente` };
   }
 
   /**

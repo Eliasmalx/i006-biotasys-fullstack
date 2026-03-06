@@ -3,7 +3,6 @@ import { AppModule } from './app.module';
 import { morganConfig } from './config/morgan.config';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { ValidationPipe } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -37,21 +36,6 @@ async function bootstrap() {
       transform: true,
     }),
   );
-
-  app.setGlobalPrefix('api');
-
-  if (process.env.NODE_ENV !== 'production') {
-    const swaggerConfig = new DocumentBuilder()
-      .setTitle('Biotasys API')
-      .setDescription('Documentacion de la API del backend de Biotasys')
-      .setVersion('1.0.0')
-      .addBearerAuth()
-      .build();
-    const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
-    SwaggerModule.setup('api/docs', app, swaggerDocument, {
-      jsonDocumentUrl: 'api/docs-json',
-    });
-  }
 
   const port = process.env.PORT || 3000;
 

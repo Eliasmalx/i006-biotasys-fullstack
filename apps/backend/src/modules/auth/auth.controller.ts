@@ -1,20 +1,20 @@
-import { Controller, Post, Body, HttpStatus } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpStatus,
+} from '@nestjs/common';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 
-@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  @ApiBody({
-    type: LoginDto,
-    description: 'Credenciales para autenticar al usuario',
-  })
   @ApiOperation({
     summary: 'Login de usuario',
     description: 'Valida credenciales y retorna JWT + Refresh token',
@@ -37,10 +37,6 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @ApiBody({
-    type: RefreshTokenDto,
-    description: 'Refresh token activo para emitir un nuevo access token',
-  })
   @ApiOperation({
     summary: 'Refrescar access token',
     description: 'Usa refresh token para obtener un nuevo access token',
@@ -70,10 +66,6 @@ export class AuthController {
   }
 
   @Post('logout')
-  @ApiBody({
-    type: RefreshTokenDto,
-    description: 'Refresh token a revocar para cerrar sesion',
-  })
   @ApiOperation({
     summary: 'Logout (revoca refresh token)',
     description: 'Invalida el refresh token para cerrar sesión',
@@ -81,10 +73,6 @@ export class AuthController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Logout exitoso',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Refresh token invalido o ya revocado',
   })
   async logout(
     @Body() refreshTokenDto: RefreshTokenDto,
