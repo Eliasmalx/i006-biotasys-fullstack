@@ -125,7 +125,6 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     currentUser: AuthenticatedUser,
   ): Promise<PaginatedStudiesResponseDto> {
     this.assertRole(currentUser, Role.NUTRICIONISTA);
-    const organizationId = this.getOrganizationIdOrFail(currentUser);
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
@@ -133,8 +132,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       .createQueryBuilder('study')
       .leftJoinAndSelect('study.nutritionist', 'nutritionist')
       .leftJoinAndSelect('study.laboratory', 'laboratory')
-      .where('study.organizationId = :organizationId', { organizationId })
-      .andWhere('study.nutritionistId = :nutritionistId', {
+      .where('study.nutritionistId = :nutritionistId', {
         nutritionistId: currentUser.userId,
       });
 
@@ -153,7 +151,6 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     currentUser: AuthenticatedUser,
   ): Promise<PaginatedStudiesResponseDto> {
     this.assertRole(currentUser, Role.LABORATORIO);
-    const organizationId = this.getOrganizationIdOrFail(currentUser);
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
@@ -161,8 +158,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       .createQueryBuilder('study')
       .leftJoinAndSelect('study.nutritionist', 'nutritionist')
       .leftJoinAndSelect('study.laboratory', 'laboratory')
-      .where('study.organizationId = :organizationId', { organizationId })
-      .andWhere('study.laboratoryId = :laboratoryId', {
+      .where('study.laboratoryId = :laboratoryId', {
         laboratoryId: currentUser.userId,
       });
 
@@ -180,19 +176,16 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     studyId: string,
     currentUser: AuthenticatedUser,
   ): Promise<StudyResponseDto> {
-    const organizationId = this.getOrganizationIdOrFail(currentUser);
-
-    const whereBase = { id: studyId, organizationId };
     let study: Study | null = null;
 
     if (currentUser.role === Role.NUTRICIONISTA) {
       study = await this.studyRepository.findOne({
-        where: { ...whereBase, nutritionistId: currentUser.userId },
+        where: { id: studyId, nutritionistId: currentUser.userId },
         relations: ['nutritionist', 'laboratory'],
       });
     } else if (currentUser.role === Role.LABORATORIO) {
       study = await this.studyRepository.findOne({
-        where: { ...whereBase, laboratoryId: currentUser.userId },
+        where: { id: studyId, laboratoryId: currentUser.userId },
         relations: ['nutritionist', 'laboratory'],
       });
     } else {
@@ -676,12 +669,10 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     currentUser: AuthenticatedUser,
   ): Promise<Study> {
     this.assertRole(currentUser, Role.LABORATORIO);
-    const organizationId = this.getOrganizationIdOrFail(currentUser);
 
     const study = await this.studyRepository.findOne({
       where: {
         id: studyId,
-        organizationId,
         laboratoryId: currentUser.userId,
       },
       relations: ['nutritionist', 'laboratory'],
