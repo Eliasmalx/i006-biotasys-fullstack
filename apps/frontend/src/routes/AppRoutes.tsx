@@ -11,6 +11,7 @@ import { PasswordReset } from "../pages/login/PasswordReset";
 import { ForgotPassword } from "../pages/login/ForgotPassword";
 import { DashboardLaboratory } from "../pages/dashboard/DashboardLaboratory";
 import { DashboardNutritionist } from "../pages/dashboard/DashboardNutritionist";
+import { Navbar } from "../pages/Navbar";
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -35,6 +36,7 @@ export const AppRoutes: React.FC = () => {
         path="/dashboard"
         element={
           <ProtectedRoute>
+            <Navbar/>
             <Dashboard />
           </ProtectedRoute>
         }
@@ -43,7 +45,7 @@ export const AppRoutes: React.FC = () => {
       <Route path="/invitations/accept/:token" element={<AcceptInvitationPage />} />
       <Route path="/passwoedRecovery" element={<PasswordRecovery />} />
       <Route path="/passwoedReset" element={<PasswordReset />} />
-      <Route path="/dashboardLaboratory" element={<DashboardNutritionist />} />
+      <Route path="/dashboardLaboratory" element={<DashboardNutritionist/>} />
       
     </Routes>
   );
