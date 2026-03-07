@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsObject } from 'class-validator';
+import { IsNotEmptyObject, IsObject } from 'class-validator';
 
 export class UploadStudyJsonDto {
   @ApiProperty({
@@ -11,6 +11,6 @@ export class UploadStudyJsonDto {
     },
   })
   @IsObject()
-  @IsNotEmpty()
+  @IsNotEmptyObject({}, { message: 'rawJson no puede estar vacio' })
   rawJson!: Record<string, unknown>;
 }

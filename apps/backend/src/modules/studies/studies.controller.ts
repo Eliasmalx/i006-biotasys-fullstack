@@ -39,7 +39,6 @@ type AuthenticatedRequest = Request & {
   user: {
     userId: string;
     role: Role;
-    organizationId?: string;
     email?: string;
   };
 };
@@ -100,7 +99,7 @@ export class StudiesController {
   @ApiOperation({
     summary: 'Listar ordenes del laboratorio',
     description:
-      'Retorna solo estudios asignados al laboratorio autenticado con filtros y paginacion',
+      'Retorna solo estudios asignados al usuario autenticado en sesion laboratorio',
   })
   @ApiResponse({
     status: 200,
@@ -121,7 +120,7 @@ export class StudiesController {
   @ApiOperation({
     summary: 'Detalle de estudio',
     description:
-      'Retorna detalle completo del estudio para su owner nutricionista o laboratorio asignado',
+      'Retorna detalle completo del estudio para su owner nutricionista o usuario asignado',
   })
   @ApiResponse({
     status: 200,

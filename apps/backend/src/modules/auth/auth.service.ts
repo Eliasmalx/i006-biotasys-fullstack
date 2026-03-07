@@ -21,7 +21,6 @@ interface JwtPayload {
   sub: string;
   email: string;
   role: Role;
-  organizationId?: string;
 }
 
 /**
@@ -106,7 +105,6 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         role,
-        organizationId: user.organizationId,
       },
     };
   }
@@ -122,7 +120,6 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role,
-      organizationId: user.organizationId,
     };
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access

@@ -13,7 +13,7 @@ export class ListStudiesQueryDto {
   @ApiPropertyOptional({ example: 'c5e37fca-fd20-4e59-843d-4ea0dc350907' })
   @IsOptional()
   @IsUUID()
-  laboratoryId?: string;
+  assigneeUserId?: string;
 
   @ApiPropertyOptional({ enum: StudyStatus, example: StudyStatus.SOLICITADO })
   @IsOptional()

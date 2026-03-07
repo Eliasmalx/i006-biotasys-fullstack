@@ -15,6 +15,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { EmailService } from '../../infrastructure/email/services/email.service';
+import config from '../../config/dotenv.config';
 
 @Injectable()
 export class UsersService {
@@ -84,7 +85,12 @@ export class UsersService {
       );
 
       // Retornar DTO sin exponer la contraseña
-      return this.mapUserToResponseDto(savedUser);
+      const responseDto = this.mapUserToResponseDto(savedUser);
+      if (config.nodeEnv === 'development') {
+        responseDto.verificationToken = verificationToken.token;
+        responseDto.verificationLink = verificationLink;
+      }
+      return responseDto;
     } catch (error) {
       if (error instanceof ConflictException) {
         throw error;
@@ -325,7 +331,6 @@ export class UsersService {
     responseDto.role = user.role;
     responseDto.isActive = user.isActive;
     responseDto.emailVerified = user.emailVerified;
-    responseDto.organizationId = user.organizationId;
     responseDto.lastLoginAt = user.lastLoginAt;
     responseDto.createdAt = user.createdAt;
     responseDto.updatedAt = user.updatedAt;

@@ -36,7 +36,6 @@ import config from '../../config/dotenv.config';
 type AuthenticatedUser = {
   userId: string;
   role: Role;
-  organizationId?: string;
   email?: string;
 };
 
@@ -78,25 +77,31 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
   ): Promise<StudyResponseDto> {
     this.assertRole(currentUser, Role.NUTRICIONISTA);
 
-    // Verificar que el laboratorio existe y tiene el rol correcto
-    const laboratory = await this.userRepository.findOne({
+    const assigneeUser = await this.userRepository.findOne({
       where: {
-        id: dto.laboratoryId,
-        role: Role.LABORATORIO,
+        id: dto.assigneeUserId,
       },
     });
 
-    if (!laboratory) {
-      throw new BadRequestException('Laboratorio no encontrado o inválido');
+    if (!assigneeUser) {
+      throw new BadRequestException('Usuario asignado no encontrado');
     }
 
-    const studyCode = await this.generateStudyCode(currentUser.userId);
+    if (!assigneeUser.isActive) {
+      throw new BadRequestException('Usuario asignado inactivo');
+    }
+
+    if (!assigneeUser.emailVerified) {
+      throw new BadRequestException('Usuario asignado con email no verificado');
+    }
+
+    const studyCode = await this.generateStudyCode();
     const now = new Date();
 
     const study = this.studyRepository.create({
       studyCode,
       nutritionistId: currentUser.userId,
-      laboratoryId: dto.laboratoryId,
+      assigneeUserId: dto.assigneeUserId,
       patientCode: dto.patientCode,
       patientAge: dto.patientAge,
       patientSex: dto.patientSex,
@@ -125,15 +130,13 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     currentUser: AuthenticatedUser,
   ): Promise<PaginatedStudiesResponseDto> {
     this.assertRole(currentUser, Role.NUTRICIONISTA);
-    const organizationId = this.getOrganizationIdOrFail(currentUser);
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
     const qb = this.studyRepository
       .createQueryBuilder('study')
       .leftJoinAndSelect('study.nutritionist', 'nutritionist')
-      .leftJoinAndSelect('study.laboratory', 'laboratory')
-      .where('study.organizationId = :organizationId', { organizationId })
+      .leftJoinAndSelect('study.assignee', 'assignee')
       .andWhere('study.nutritionistId = :nutritionistId', {
         nutritionistId: currentUser.userId,
       });
@@ -153,17 +156,15 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     currentUser: AuthenticatedUser,
   ): Promise<PaginatedStudiesResponseDto> {
     this.assertRole(currentUser, Role.LABORATORIO);
-    const organizationId = this.getOrganizationIdOrFail(currentUser);
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
     const qb = this.studyRepository
       .createQueryBuilder('study')
       .leftJoinAndSelect('study.nutritionist', 'nutritionist')
-      .leftJoinAndSelect('study.laboratory', 'laboratory')
-      .where('study.organizationId = :organizationId', { organizationId })
-      .andWhere('study.laboratoryId = :laboratoryId', {
-        laboratoryId: currentUser.userId,
+      .leftJoinAndSelect('study.assignee', 'assignee')
+      .where('study.assigneeUserId = :assigneeUserId', {
+        assigneeUserId: currentUser.userId,
       });
 
     this.applyCommonFilters(qb, query);
@@ -180,20 +181,18 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     studyId: string,
     currentUser: AuthenticatedUser,
   ): Promise<StudyResponseDto> {
-    const organizationId = this.getOrganizationIdOrFail(currentUser);
-
-    const whereBase = { id: studyId, organizationId };
+    const whereBase = { id: studyId };
     let study: Study | null = null;
 
     if (currentUser.role === Role.NUTRICIONISTA) {
       study = await this.studyRepository.findOne({
         where: { ...whereBase, nutritionistId: currentUser.userId },
-        relations: ['nutritionist', 'laboratory'],
+        relations: ['nutritionist', 'assignee'],
       });
     } else if (currentUser.role === Role.LABORATORIO) {
       study = await this.studyRepository.findOne({
-        where: { ...whereBase, laboratoryId: currentUser.userId },
-        relations: ['nutritionist', 'laboratory'],
+        where: { ...whereBase, assigneeUserId: currentUser.userId },
+        relations: ['nutritionist', 'assignee'],
       });
     } else {
       throw new ForbiddenException('Rol no autorizado para consultar estudios');
@@ -305,19 +304,44 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
   ): Promise<{ message: string; study: StudyResponseDto }> {
     const study = await this.getLaboratoryStudyOrFail(studyId, currentUser);
 
-    if (study.status !== StudyStatus.EN_ANALISIS) {
+    const allowedStatuses = [
+      StudyStatus.SOLICITADO,
+      StudyStatus.RECIBIDO,
+      StudyStatus.EN_ANALISIS,
+      StudyStatus.RECHAZADO,
+    ];
+    if (!allowedStatuses.includes(study.status)) {
       throw new ConflictException(
-        'Solo se puede cargar JSON cuando el estudio esta EN_ANALISIS',
+        'No se puede cargar JSON en el estado actual del estudio',
       );
     }
 
+    const fromStatus = study.status;
+    const now = new Date();
+
     study.rawJson = dto.rawJson;
+    study.status = StudyStatus.EN_ANALISIS;
     study.processingState = ProcessingState.PENDING;
     study.processingError = null;
     study.processingAttempts = 0;
     study.lastProcessingAt = null;
+    study.rejectionReason = null;
+    study.rejectedAt = null;
+    if (!study.analysisStartedAt) {
+      study.analysisStartedAt = now;
+    }
 
     const savedStudy = await this.studyRepository.save(study);
+
+    if (fromStatus !== savedStudy.status) {
+      await this.createStatusHistory({
+        studyId: savedStudy.id,
+        fromStatus,
+        toStatus: savedStudy.status,
+        changedByUserId: currentUser.userId,
+        note: 'Analisis iniciado por carga de JSON',
+      });
+    }
 
     await this.studyProcessingJobRepository.update(
       {
@@ -360,7 +384,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
   ): Promise<StudyResponseDto> {
     const study = await this.studyRepository.findOne({
       where: { id: studyId },
-      relations: ['nutritionist', 'laboratory'],
+      relations: ['nutritionist', 'assignee'],
     });
 
     if (!study) {
@@ -369,9 +393,21 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
 
     const fromStatus = study.status;
     const now = new Date();
+    const resolvedPdfUrl = dto.pdfUrl ?? dto.file_url;
+    const resolvedNormalizedJson = this.resolveNormalizedJson(dto);
 
-    study.pdfUrl = dto.pdfUrl;
-    study.normalizedJson = dto.normalizedJson;
+    if (!resolvedPdfUrl) {
+      throw new BadRequestException('pdfUrl o file_url es requerido');
+    }
+
+    if (!resolvedNormalizedJson) {
+      throw new BadRequestException(
+        'normalizedJson o payload IA en snake_case es requerido',
+      );
+    }
+
+    study.pdfUrl = resolvedPdfUrl;
+    study.normalizedJson = resolvedNormalizedJson;
     study.aiResult = this.mapExternalAiResult(dto.aiResult);
     study.processingState = ProcessingState.SUCCESS;
     study.processingError = null;
@@ -481,6 +517,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       const errorMessage = this.getErrorMessage(error);
       const nextAttempt = job.attempt + 1;
       const maxRetries = Math.max(1, config.ai.maxRetries);
+      const now = new Date();
 
       if (nextAttempt >= maxRetries) {
         await this.studyProcessingJobRepository.update(job.id, {
@@ -488,6 +525,29 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
           attempt: nextAttempt,
           lastError: errorMessage,
         });
+
+        const technicalReason = `IA_PROCESSING_FAILED: ${errorMessage.slice(0, 300)}`;
+        const fromStatus = study.status;
+
+        await this.studyRepository.update(study.id, {
+          status: StudyStatus.RECHAZADO,
+          rejectedAt: now,
+          rejectionReason: technicalReason,
+          processingState: ProcessingState.ERROR,
+          processingError: errorMessage,
+          processingAttempts: nextAttempt,
+          lastProcessingAt: now,
+        });
+
+        if (fromStatus !== StudyStatus.RECHAZADO) {
+          await this.createStatusHistory({
+            studyId: study.id,
+            fromStatus,
+            toStatus: StudyStatus.RECHAZADO,
+            changedByUserId: null,
+            note: 'Rechazo automatico por fallo de IA tras agotar reintentos',
+          });
+        }
       } else {
         await this.studyProcessingJobRepository.update(job.id, {
           status: ProcessingJobStatus.PENDING,
@@ -495,14 +555,15 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
           runAt: this.calculateBackoffRunAt(nextAttempt),
           lastError: errorMessage,
         });
-      }
 
-      await this.studyRepository.update(study.id, {
-        processingState: ProcessingState.ERROR,
-        processingError: errorMessage,
-        processingAttempts: nextAttempt,
-        lastProcessingAt: new Date(),
-      });
+        await this.studyRepository.update(study.id, {
+          status: StudyStatus.EN_ANALISIS,
+          processingState: ProcessingState.ERROR,
+          processingError: errorMessage,
+          processingAttempts: nextAttempt,
+          lastProcessingAt: now,
+        });
+      }
 
       this.logger.error(
         `Error procesando estudio ${study.studyCode}: ${errorMessage}`,
@@ -571,9 +632,9 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    if (query.laboratoryId) {
-      qb.andWhere('study.laboratoryId = :laboratoryId', {
-        laboratoryId: query.laboratoryId,
+    if (query.assigneeUserId) {
+      qb.andWhere('study.assigneeUserId = :assigneeUserId', {
+        assigneeUserId: query.assigneeUserId,
       });
     }
 
@@ -616,7 +677,6 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     return {
       id: study.id,
       studyCode: study.studyCode,
-      organizationId: study.organizationId,
       patientCode: study.patientCode,
       patientAge: study.patientAge,
       patientSex: study.patientSex,
@@ -643,8 +703,8 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       nutritionist: study.nutritionist
         ? this.toStudyUserSummary(study.nutritionist)
         : undefined,
-      laboratory: study.laboratory
-        ? this.toStudyUserSummary(study.laboratory)
+      assignee: study.assignee
+        ? this.toStudyUserSummary(study.assignee)
         : undefined,
     };
   }
@@ -665,10 +725,44 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
         return AiResult.EQUILIBRADA;
       case ExternalAiResult.ALTERADA:
         return AiResult.ALTERADA;
+      case ExternalAiResult.INCONCLUSA:
+        return AiResult.INCONCLUSA;
+      case ExternalAiResult.CRITICA:
+        return AiResult.CRITICA;
       case ExternalAiResult.SIN_RESULTADO:
       default:
         return AiResult.SIN_RESULTADO;
     }
+  }
+
+  private resolveNormalizedJson(
+    dto: ProcessingResultDto,
+  ): Record<string, unknown> | null {
+    if (dto.normalizedJson && this.isNonEmptyObject(dto.normalizedJson)) {
+      return dto.normalizedJson;
+    }
+
+    const externalPayload: Record<string, unknown> = {};
+
+    if (dto.study_code) externalPayload.study_code = dto.study_code;
+    if (dto.nutricionist) externalPayload.nutricionist = dto.nutricionist;
+    if (dto.patient) externalPayload.patient = dto.patient;
+    if (dto.data) externalPayload.data = dto.data;
+    if (dto.interpretation)
+      externalPayload.interpretation = dto.interpretation;
+    if (dto.study_date) externalPayload.study_date = dto.study_date;
+    if (dto.report_date) externalPayload.report_date = dto.report_date;
+    if (dto.processingMeta) externalPayload.processingMeta = dto.processingMeta;
+
+    if (!this.isNonEmptyObject(externalPayload)) {
+      return null;
+    }
+
+    return externalPayload;
+  }
+
+  private isNonEmptyObject(value: Record<string, unknown>): boolean {
+    return Object.keys(value).length > 0;
   }
 
   private async getLaboratoryStudyOrFail(
@@ -676,15 +770,13 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     currentUser: AuthenticatedUser,
   ): Promise<Study> {
     this.assertRole(currentUser, Role.LABORATORIO);
-    const organizationId = this.getOrganizationIdOrFail(currentUser);
 
     const study = await this.studyRepository.findOne({
       where: {
         id: studyId,
-        organizationId,
-        laboratoryId: currentUser.userId,
+        assigneeUserId: currentUser.userId,
       },
-      relations: ['nutritionist', 'laboratory'],
+      relations: ['nutritionist', 'assignee'],
     });
 
     if (!study) {
@@ -698,13 +790,6 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     if (currentUser.role !== expectedRole) {
       throw new ForbiddenException('No tienes permisos para esta operacion');
     }
-  }
-
-  private getOrganizationIdOrFail(currentUser: AuthenticatedUser): string {
-    if (!currentUser.organizationId) {
-      throw new ForbiddenException('Usuario sin organizacion asignada');
-    }
-    return currentUser.organizationId;
   }
 
   private async createStatusHistory(params: {
@@ -725,7 +810,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     await this.studyStatusHistoryRepository.save(history);
   }
 
-  private async generateStudyCode(organizationId: string): Promise<string> {
+  private async generateStudyCode(): Promise<string> {
     for (let attempt = 0; attempt < 5; attempt++) {
       const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
@@ -733,13 +818,13 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
 
       try {
         let sequence = await queryRunner.manager.findOne(StudyCodeSequence, {
-          where: { organizationId },
+          where: { key: 'global' },
           lock: { mode: 'pessimistic_write' },
         });
 
         if (!sequence) {
           sequence = queryRunner.manager.create(StudyCodeSequence, {
-            organizationId,
+            key: 'global',
             currentValue: 0,
           });
         }

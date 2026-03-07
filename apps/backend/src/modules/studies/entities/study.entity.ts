@@ -17,9 +17,8 @@ import { ProcessingState } from '../enums/processing-state.enum';
 
 @Entity('studies')
 @Index(['studyCode'], { unique: true })
-@Index(['organizationId', 'status'])
 @Index(['nutritionistId', 'createdAt'])
-@Index(['laboratoryId', 'status'])
+@Index(['assigneeUserId', 'status'])
 export class Study {
   @ApiProperty({ example: 'f37e86f5-95d5-46db-b255-f31a2f0eb2ec' })
   @PrimaryGeneratedColumn('uuid')
@@ -28,10 +27,6 @@ export class Study {
   @ApiProperty({ example: 'BIO-AR-00001' })
   @Column({ type: 'varchar', length: 32, unique: true })
   studyCode!: string;
-
-  @ApiProperty({ example: 'd2d3fd1e-6f91-4b2e-b902-8d6578d6a3f1' })
-  @Column({ type: 'uuid' })
-  organizationId!: string;
 
   @ApiProperty({ example: '7ec2c8ca-c633-43ea-95dc-02af73ad2018' })
   @Column({ type: 'uuid' })
@@ -43,11 +38,11 @@ export class Study {
 
   @ApiProperty({ example: 'c5e37fca-fd20-4e59-843d-4ea0dc350907' })
   @Column({ type: 'uuid' })
-  laboratoryId!: string;
+  assigneeUserId!: string;
 
   @ManyToOne(() => User, { nullable: false })
-  @JoinColumn({ name: 'laboratoryId' })
-  laboratory!: User;
+  @JoinColumn({ name: 'assigneeUserId' })
+  assignee!: User;
 
   @ApiProperty({ example: 'PCT-AR-56321' })
   @Column({ type: 'varchar', length: 64 })

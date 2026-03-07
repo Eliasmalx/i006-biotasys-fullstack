@@ -5,8 +5,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
   Index,
-  ManyToOne,
-  JoinColumn,
 } from 'typeorm';
 import { Role } from '../../../common/enums/role.enum';
 import { Exclude } from 'class-transformer';
@@ -14,7 +12,6 @@ import { ApiProperty } from '@nestjs/swagger';
 
 @Entity('users')
 @Index(['email'], { unique: true })
-@Index(['organizationId'])
 export class User {
   @ApiProperty({
     example: '550e8400-e29b-41d4-a716-446655440000',
@@ -60,13 +57,6 @@ export class User {
   })
   @Column({ default: false })
   emailVerified!: boolean;
-
-  @ApiProperty({
-    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-    required: false,
-  })
-  @Column({ type: 'uuid', nullable: true })
-  organizationId?: string;
 
   @ApiProperty({ required: false })
   @Column({ type: 'timestamp', nullable: true })
