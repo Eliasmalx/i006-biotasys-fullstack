@@ -1,14 +1,32 @@
 import {
-  Controller,
-  Post,
   Body,
+  Controller,
   HttpStatus,
+  Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
+import type { Request } from 'express';
+import { Role } from '../../common/enums/role.enum';
+import { JwtAuthGuard } from '../../common/guards/jwt-guards';
 import { AuthService } from './auth.service';
+import { LoginResponseDto } from './dto/login-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { LoginResponseDto } from './dto/login-response.dto';
+import { SwitchRoleDto } from './dto/switch-role.dto';
+
+type AuthenticatedRequest = Request & {
+  user: {
+    userId: string;
+    role: Role;
+    email?: string;
+  };
+};
 
 @Controller('auth')
 export class AuthController {
@@ -26,7 +44,7 @@ export class AuthController {
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: 'Credenciales inválidas o usuario inactivo',
+    description: 'Credenciales invalidas o usuario inactivo',
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
@@ -53,7 +71,7 @@ export class AuthController {
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: 'Refresh token inválido o expirado',
+    description: 'Refresh token invalido o expirado',
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
@@ -68,7 +86,7 @@ export class AuthController {
   @Post('logout')
   @ApiOperation({
     summary: 'Logout (revoca refresh token)',
-    description: 'Invalida el refresh token para cerrar sesión',
+    description: 'Invalida el refresh token para cerrar sesion',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -78,6 +96,38 @@ export class AuthController {
     @Body() refreshTokenDto: RefreshTokenDto,
   ): Promise<{ message: string }> {
     await this.authService.revokeRefreshToken(refreshTokenDto.refreshToken);
-    return { message: 'Sesión cerrada exitosamente' };
+    return { message: 'Sesion cerrada exitosamente' };
+  }
+
+  @Post('switch-role')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Cambiar rol de sesion',
+    description:
+      'Emite nuevos tokens para cambiar entre nutricionista y laboratorio sin enviar credenciales de nuevo',
+  })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Rol de sesion actualizado exitosamente',
+    type: LoginResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description:
+      'Rol invalido o usuario con email no verificado para operar en la plataforma',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Token invalido o usuario inactivo/no encontrado',
+  })
+  async switchRole(
+    @Body() switchRoleDto: SwitchRoleDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<LoginResponseDto> {
+    return this.authService.switchSessionRole(
+      request.user.userId,
+      switchRoleDto.role,
+    );
   }
 }
