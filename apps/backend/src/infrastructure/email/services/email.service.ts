@@ -198,4 +198,22 @@ export class EmailService {
       html,
     );
   }
+
+  /**
+   * Envía email para restaurar contraseña
+   * @param to Email del usuario
+   * @param firstName Nombre del usuario
+   * @param resetLink Link de reseteo con token
+   */
+  async sendPasswordResetEmail(
+    to: string,
+    firstName: string,
+    resetLink: string,
+  ): Promise<void> {
+    const { passwordResetEmailTemplate } = await import('../template');
+
+    const html = passwordResetEmailTemplate(resetLink, firstName);
+
+    await this.sendEmail(to, '🔐 Restaurar tu contraseña - Biotasys', html);
+  }
 }

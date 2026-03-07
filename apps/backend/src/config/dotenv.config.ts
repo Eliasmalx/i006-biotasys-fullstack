@@ -29,6 +29,7 @@ function parseDurationToSeconds(duration: string): number {
 export interface IConfig {
   port: number;
   nodeEnv: 'development' | 'production' | 'test';
+  appUrl: string;
   frontendUrl: string;
   jwtSecret: string;
   jwtExpiresIn: number;
@@ -126,11 +127,16 @@ export const config: IConfig = {
     callbackApiKey: process.env.AI_CALLBACK_API_KEY || 'default-callback-key',
     maxRetries: parseInt(process.env.AI_MAX_RETRIES || '3', 10),
     serviceUrl: process.env.AI_SERVICE_URL || 'http://localhost:8000',
-    requestTimeoutMs: parseInt(process.env.AI_REQUEST_TIMEOUT_MS || '30000', 10),
+    requestTimeoutMs: parseInt(
+      process.env.AI_REQUEST_TIMEOUT_MS || '30000',
+      10,
+    ),
     backendPublicUrl:
-      process.env.AI_BACKEND_PUBLIC_URL || `http://localhost:${process.env.PORT || 3000}`,
+      process.env.AI_BACKEND_PUBLIC_URL ||
+      `http://localhost:${process.env.PORT || 3000}`,
     serviceApiKey: process.env.AI_SERVICE_API_KEY || '',
   },
+  appUrl: '',
 };
 
 export default config;
