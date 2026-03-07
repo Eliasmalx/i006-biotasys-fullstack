@@ -34,6 +34,7 @@ import {
   StudyResponseDto,
 } from './dto/study-response.dto';
 import { UploadStudyJsonDto } from './dto/upload-study-json.dto';
+import { UploadStudyJsonResponseDto } from './dto/upload-study-json-response.dto';
 import { StudiesService } from './studies.service';
 
 type AuthenticatedRequest = Request & {
@@ -63,6 +64,11 @@ export class StudiesController {
     status: 201,
     description: 'Estudio creado exitosamente',
     type: StudyResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Usuario asignado invalido (no existe, inactivo, no verificado o sin laboratorio)',
   })
   @ApiResponse({ status: 403, description: 'Rol no autorizado' })
   createStudy(
@@ -185,17 +191,18 @@ export class StudiesController {
   @ApiOperation({
     summary: 'Cargar JSON de estudio',
     description:
-      'Guarda el JSON bruto enviado por laboratorio y encola su procesamiento asincrono en backend Python',
+      'Guarda el JSON bruto del laboratorio, valida campos clinicos base y encola su procesamiento asincrono en backend Python',
   })
   @ApiBody({ type: UploadStudyJsonDto })
   @ApiResponse({
     status: 201,
     description: 'JSON recibido y job encolado',
-    schema: {
-      example: {
-        message: 'JSON recibido y encolado para procesamiento',
-      },
-    },
+    type: UploadStudyJsonResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'JSON invalido o mismatch con datos del estudio (patientCode/patientAge/patientSex/studyDate)',
   })
   @ApiResponse({ status: 409, description: 'Estado invalido para cargar JSON' })
   uploadStudyRawJson(
@@ -248,6 +255,15 @@ export class StudiesController {
     status: 409,
     description: 'No se puede reasignar en el estado actual',
   })
+  @ApiResponse({
+    status: 400,
+    description: 'Usuario destino invalido o de otro laboratorio',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Usuario sin permisos o fuera del mismo laboratorio',
+  })
+  @ApiResponse({ status: 404, description: 'Estudio no encontrado' })
   reassignStudy(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: ReassignStudyDto,
@@ -266,13 +282,42 @@ export class StudiesController {
   @ApiOperation({
     summary: 'Callback de procesamiento',
     description:
-      'Endpoint tecnico consumido por backend Python para entregar pdfUrl, normalizedJson y resultado IA',
+      'Endpoint tecnico consumido por backend Python. Acepta formato camelCase o snake_case y marca el estudio como INFORME_LISTO en exito',
   })
-  @ApiBody({ type: ProcessingResultDto })
+  @ApiBody({
+    type: ProcessingResultDto,
+    examples: {
+      camelCase: {
+        summary: 'Formato camelCase',
+        value: {
+          pdfUrl: 'https://cdn.biotasys.com/reports/BIO-AR-56321.pdf',
+          normalizedJson: {
+            patientSummary: { code: 'PCT-AR-56321' },
+            findings: [{ key: 'alpha_diversity', value: 2.31 }],
+          },
+          aiResult: 'equilibrada',
+        },
+      },
+      snakeCase: {
+        summary: 'Formato snake_case',
+        value: {
+          file_url: 'https://biotasys.com/v1/report_123.pdf',
+          study_code: 'BIO-123',
+          data: { biomarkers: [] },
+          interpretation: { summary: 'ok' },
+          aiResult: 'inconclusa',
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: 201,
     description: 'Resultado de procesamiento aplicado al estudio',
     type: StudyResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Payload invalido (faltan pdfUrl/file_url o normalizedJson/payload compatible)',
   })
   @ApiResponse({ status: 401, description: 'API key invalida' })
   handleProcessingResult(

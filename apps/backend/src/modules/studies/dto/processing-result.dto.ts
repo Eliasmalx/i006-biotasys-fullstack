@@ -13,7 +13,7 @@ import { ExternalAiResult } from '../enums/ai-result.enum';
 export class ProcessingResultDto {
   @ApiPropertyOptional({
     example: 'https://cdn.biotasys.com/reports/BIO-AR-56321.pdf',
-    description: 'Formato actual del callback',
+    description: 'Formato actual del callback (camelCase). Requerido si no se envia file_url',
   })
   @IsString()
   @IsNotEmpty()
@@ -28,7 +28,8 @@ export class ProcessingResultDto {
       patientSummary: { code: 'PCT-AR-56321' },
       findings: [{ key: 'alpha_diversity', value: 2.31 }],
     },
-    description: 'Formato actual del callback',
+    description:
+      'Formato actual del callback (camelCase). Requerido si no se envia payload IA en snake_case',
   })
   @IsObject()
   @IsOptional()
@@ -91,7 +92,7 @@ export class ProcessingResultDto {
 
   @ApiPropertyOptional({
     example: 'https://biotasys.com/v1/report_123.pdf',
-    description: 'Formato IA en snake_case',
+    description: 'Formato IA en snake_case. Requerido si no se envia pdfUrl',
   })
   @IsOptional()
   @IsString()
