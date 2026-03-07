@@ -21,7 +21,6 @@ interface JwtPayload {
   sub: string;
   email: string;
   role: Role;
-  organizationId?: string;
 }
 
 /**
@@ -36,6 +35,7 @@ interface JwtPayload {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly REFRESH_TOKEN_EXPIRY_DAYS = 7;
+  private readonly SWITCHABLE_ROLES = [Role.NUTRICIONISTA, Role.LABORATORIO];
 
   constructor(
     private readonly jwtService: JwtService,
@@ -96,19 +96,60 @@ export class AuthService {
       `Usuario ${user.email} inició sesión con rol ${role} exitosamente`,
     );
 
-    return {
+    return this.buildLoginResponse(user, role, accessToken, refreshToken.token);
+  }
+
+  /**
+   * Cambia el rol de la sesion activa sin modificar el rol persistido en BD
+   * @param userId ID del usuario autenticado
+   * @param targetRole Rol objetivo para emitir nuevos tokens
+   * @returns Nuevos tokens y datos de usuario con el rol de sesion solicitado
+   */
+  async switchSessionRole(
+    userId: string,
+    targetRole: Role,
+  ): Promise<LoginResponseDto> {
+    if (!this.SWITCHABLE_ROLES.includes(targetRole)) {
+      throw new BadRequestException(
+        'Solo se permite cambiar entre nutricionista y laboratorio',
+      );
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuario no encontrado');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException(
+        'El usuario no esta activo. Contacta con el administrador',
+      );
+    }
+
+    if (!user.emailVerified) {
+      throw new BadRequestException(
+        'Tu email aun no ha sido verificado. Revisa tu bandeja de entrada para el enlace de verificacion',
+      );
+    }
+
+    await this.userRepository.update(user.id, { lastLoginAt: new Date() });
+
+    const accessToken = this.generateAccessToken(user, targetRole);
+    const refreshToken = await this.generateRefreshToken(user.id, targetRole);
+
+    this.logger.log(
+      `Usuario ${user.email} cambio sesion a rol ${targetRole} exitosamente`,
+    );
+
+    return this.buildLoginResponse(
+      user,
+      targetRole,
       accessToken,
-      refreshToken: refreshToken.token,
-      expiresIn: config.jwtExpiresIn,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role,
-        organizationId: user.organizationId,
-      },
-    };
+      refreshToken.token,
+    );
   }
 
   /**
@@ -122,7 +163,6 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role,
-      organizationId: user.organizationId,
     };
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
@@ -261,5 +301,26 @@ export class AuthService {
     } catch (error) {
       this.logger.error('Error limpiando tokens expirados:', error);
     }
+  }
+
+  private buildLoginResponse(
+    user: User,
+    role: Role,
+    accessToken: string,
+    refreshToken: string,
+  ): LoginResponseDto {
+    return {
+      accessToken,
+      refreshToken,
+      expiresIn: config.jwtExpiresIn,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        laboratory: user.laboratory ?? null,
+        role,
+      },
+    };
   }
 }

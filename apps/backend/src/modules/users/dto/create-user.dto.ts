@@ -1,13 +1,21 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MinLength, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 /**
  * DTO para crear un nuevo usuario (registro)
- * Campos requeridos según UX/UI:
+ * Campos requeridos segun UX/UI:
  * - Nombre
  * - Apellido
- * - Correo electrónico
- * - Contraseña
+ * - Correo electronico
+ * - Contrasena
+ * Campo opcional:
+ * - Laboratorio/Centro
  */
 export class CreateUserDto {
   @ApiProperty({
@@ -20,7 +28,7 @@ export class CreateUserDto {
   firstName!: string;
 
   @ApiProperty({
-    example: 'Pérez García',
+    example: 'Perez Garcia',
     description: 'Apellido del usuario',
   })
   @IsString()
@@ -30,17 +38,26 @@ export class CreateUserDto {
 
   @ApiProperty({
     example: 'juan@example.com',
-    description: 'Correo electrónico único',
+    description: 'Correo electronico unico',
   })
-  @IsEmail({}, { message: 'Correo electrónico inválido' })
+  @IsEmail({}, { message: 'Correo electronico invalido' })
   email!: string;
 
   @ApiProperty({
     example: 'SecurePass123!',
-    description: 'Contraseña (mínimo 8 caracteres)',
+    description: 'Contrasena (minimo 8 caracteres)',
   })
   @IsString()
-  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
-  @MaxLength(128, { message: 'La contraseña no puede exceder 128 caracteres' })
+  @MinLength(8, { message: 'La contrasena debe tener al menos 8 caracteres' })
+  @MaxLength(128, { message: 'La contrasena no puede exceder 128 caracteres' })
   password!: string;
+
+  @ApiPropertyOptional({
+    example: 'BiomeSense',
+    description: 'Nombre del laboratorio/centro donde opera (opcional)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120, { message: 'El laboratorio no puede exceder 120 caracteres' })
+  laboratory?: string;
 }

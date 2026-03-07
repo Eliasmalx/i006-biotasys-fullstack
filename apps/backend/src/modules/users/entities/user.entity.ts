@@ -5,8 +5,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
   Index,
-  ManyToOne,
-  JoinColumn,
 } from 'typeorm';
 import { Role } from '../../../common/enums/role.enum';
 import { Exclude } from 'class-transformer';
@@ -14,18 +12,17 @@ import { ApiProperty } from '@nestjs/swagger';
 
 @Entity('users')
 @Index(['email'], { unique: true })
-@Index(['organizationId'])
 export class User {
   @ApiProperty({
     example: '550e8400-e29b-41d4-a716-446655440000',
-    description: 'ID único del usuario (UUID)',
+    description: 'ID unico del usuario (UUID)',
   })
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
   @ApiProperty({
     example: 'juan@example.com',
-    description: 'Correo electrónico único',
+    description: 'Correo electronico unico',
   })
   @Column({ unique: true })
   email!: string;
@@ -38,9 +35,13 @@ export class User {
   @Column()
   firstName!: string;
 
-  @ApiProperty({ example: 'Pérez García' })
+  @ApiProperty({ example: 'Perez Garcia' })
   @Column()
   lastName!: string;
+
+  @ApiProperty({ required: false, example: 'BiomeSense' })
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  laboratory?: string | null;
 
   @ApiProperty({ enum: Role, example: Role.NUTRICIONISTA })
   @Column({
@@ -60,13 +61,6 @@ export class User {
   })
   @Column({ default: false })
   emailVerified!: boolean;
-
-  @ApiProperty({
-    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-    required: false,
-  })
-  @Column({ type: 'uuid', nullable: true })
-  organizationId?: string;
 
   @ApiProperty({ required: false })
   @Column({ type: 'timestamp', nullable: true })

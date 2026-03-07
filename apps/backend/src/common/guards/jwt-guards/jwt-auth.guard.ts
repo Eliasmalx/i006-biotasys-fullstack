@@ -8,7 +8,6 @@ type JwtUser = {
   userId: string;
   email: string;
   role: string;
-  organizationId?: string | null;
 };
 
 type PassportInfo = { message?: string };
@@ -36,15 +35,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       );
 
       throw new UnauthorizedException(msg);
-    }
-
-    // Validar que organizationId esté presente (requerido para ownership guards)
-    const typedUser = user as unknown as JwtUser;
-    if (!typedUser.organizationId) {
-      this.logger.warn(
-        `Usuario autenticado sin organizationId: ${typedUser.userId}`,
-      );
-      throw new UnauthorizedException('Usuario no tiene organización asignada');
     }
 
     return user;

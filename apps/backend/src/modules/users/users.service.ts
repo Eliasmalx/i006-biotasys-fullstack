@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Brackets, Repository, LessThan } from 'typeorm';
 import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { User } from './entities/user.entity';
@@ -14,7 +14,10 @@ import { EmailVerificationToken } from './entities/email-verification-token.enti
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { LaboratoryOptionDto } from './dto/laboratory-option.dto';
 import { EmailService } from '../../infrastructure/email/services/email.service';
+import config from '../../config/dotenv.config';
+import { Role } from '../../common/enums/role.enum';
 
 @Injectable()
 export class UsersService {
@@ -84,7 +87,12 @@ export class UsersService {
       );
 
       // Retornar DTO sin exponer la contraseña
-      return this.mapUserToResponseDto(savedUser);
+      const responseDto = this.mapUserToResponseDto(savedUser);
+      if (config.nodeEnv === 'development') {
+        responseDto.verificationToken = verificationToken.token;
+        responseDto.verificationLink = verificationLink;
+      }
+      return responseDto;
     } catch (error) {
       if (error instanceof ConflictException) {
         throw error;
@@ -114,6 +122,58 @@ export class UsersService {
     }
 
     return this.mapUserToResponseDto(user);
+  }
+
+  async listLaboratoryOptions(
+    search?: string,
+    currentUser?: { userId: string; role: Role },
+  ): Promise<LaboratoryOptionDto[]> {
+    const qb = this.userRepository
+      .createQueryBuilder('user')
+      .where('user.isActive = :isActive', { isActive: true })
+      .andWhere('user.emailVerified = :emailVerified', { emailVerified: true })
+      .andWhere('user.laboratory IS NOT NULL')
+      .andWhere("TRIM(user.laboratory) <> ''");
+
+    if (search?.trim()) {
+      const term = `%${search.trim()}%`;
+      qb.andWhere(
+        new Brackets((subQb) => {
+          subQb
+            .where('user.laboratory ILIKE :term', { term })
+            .orWhere('user.firstName ILIKE :term', { term })
+            .orWhere('user.lastName ILIKE :term', { term })
+            .orWhere('user.email ILIKE :term', { term });
+        }),
+      );
+    }
+
+    if (currentUser?.role === Role.LABORATORIO) {
+      const actor = await this.userRepository.findOne({
+        where: { id: currentUser.userId },
+      });
+      const actorLaboratory = this.normalizeLaboratory(actor?.laboratory);
+      if (!actorLaboratory) {
+        return [];
+      }
+
+      qb.andWhere('LOWER(TRIM(user.laboratory)) = :actorLaboratory', {
+        actorLaboratory,
+      });
+    }
+
+    qb.orderBy('user.laboratory', 'ASC')
+      .addOrderBy('user.firstName', 'ASC')
+      .addOrderBy('user.lastName', 'ASC');
+
+    const users = await qb.getMany();
+
+    return users.map((user) => ({
+      userId: user.id,
+      laboratory: user.laboratory!.trim(),
+      fullName: `${user.firstName} ${user.lastName}`.trim(),
+      email: user.email,
+    }));
   }
 
   /**
@@ -165,6 +225,10 @@ export class UsersService {
 
       if (updateUserDto.lastName) {
         user.lastName = updateUserDto.lastName;
+      }
+
+      if (updateUserDto.laboratory !== undefined) {
+        user.laboratory = updateUserDto.laboratory || null;
       }
 
       if (updateUserDto.email) {
@@ -322,13 +386,19 @@ export class UsersService {
     responseDto.email = user.email;
     responseDto.firstName = user.firstName;
     responseDto.lastName = user.lastName;
+    responseDto.laboratory = user.laboratory ?? null;
     responseDto.role = user.role;
     responseDto.isActive = user.isActive;
     responseDto.emailVerified = user.emailVerified;
-    responseDto.organizationId = user.organizationId;
     responseDto.lastLoginAt = user.lastLoginAt;
     responseDto.createdAt = user.createdAt;
     responseDto.updatedAt = user.updatedAt;
     return responseDto;
+  }
+
+  private normalizeLaboratory(value?: string | null): string | null {
+    if (!value) return null;
+    const normalized = value.trim().toLowerCase();
+    return normalized.length > 0 ? normalized : null;
   }
 }
