@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Role } from '../../../common/enums/role.enum';
 
 /**
@@ -25,12 +25,19 @@ export class UserResponseDto {
   @ApiProperty({ example: 'Perez Garcia', description: 'Apellido del usuario' })
   lastName!: string;
 
-  @ApiProperty({
-    enum: Role,
-    example: Role.NUTRICIONISTA,
-    description: 'Rol del usuario (seleccionado en login)',
+  @ApiPropertyOptional({
+    example: 'BiomeSense',
+    description: 'Nombre del laboratorio/centro (opcional)',
   })
-  role!: Role;
+  laboratory?: string | null;
+
+  @ApiPropertyOptional({
+    enum: Role,
+    nullable: true,
+    example: null,
+    description: 'Rol seleccionado en login (puede ser null al registrarse)',
+  })
+  role!: Role | null;
 
   @ApiProperty({ example: true, description: 'Estado activo del usuario' })
   isActive!: boolean;
@@ -41,9 +48,8 @@ export class UserResponseDto {
   })
   emailVerified!: boolean;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: '2026-03-03T10:30:00Z',
-    required: false,
     description: 'Ultimo login',
   })
   lastLoginAt?: Date;
@@ -60,19 +66,17 @@ export class UserResponseDto {
   })
   updatedAt!: Date;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example:
       '9F0BC2D15A6B4D6C9E0F1A2B3C4D5E6F7A8B9C0D1E2F3A4B5C6D7E8F9A0B1C2',
-    required: false,
     description:
       'Token de verificacion (solo desarrollo, no disponible en produccion)',
   })
   verificationToken?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example:
       'http://localhost:3001/auth/verify-email?token=9F0BC2D15A6B4D6C9E0F1A2B3C4D5E6F7A8B9C0D1E2F3A4B5C6D7E8F9A0B1C2',
-    required: false,
     description:
       'Link de verificacion (solo desarrollo, no disponible en produccion)',
   })

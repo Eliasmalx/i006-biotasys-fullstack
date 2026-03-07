@@ -53,6 +53,7 @@ export interface IConfig {
   ai: {
     callbackApiKey: string;
     maxRetries: number;
+    retryDelayMs: number;
     serviceUrl: string;
     requestTimeoutMs: number;
     backendPublicUrl: string;
@@ -125,6 +126,7 @@ export const config: IConfig = {
   ai: {
     callbackApiKey: process.env.AI_CALLBACK_API_KEY || 'default-callback-key',
     maxRetries: parseInt(process.env.AI_MAX_RETRIES || '3', 10),
+    retryDelayMs: parseInt(process.env.AI_RETRY_DELAY_MS || '30000', 10),
     serviceUrl: process.env.AI_SERVICE_URL || 'http://localhost:8000',
     requestTimeoutMs: parseInt(process.env.AI_REQUEST_TIMEOUT_MS || '30000', 10),
     backendPublicUrl:

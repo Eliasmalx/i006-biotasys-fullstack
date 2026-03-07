@@ -31,6 +31,7 @@ export class LoginResponseDto {
     email: string;
     firstName: string;
     lastName: string;
+    laboratory?: string | null;
     role: Role;
   };
 }

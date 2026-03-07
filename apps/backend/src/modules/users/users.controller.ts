@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import {
+  Req,
   Controller,
   Get,
   Post,
@@ -9,8 +10,10 @@ import {
   Delete,
   Query,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiOperation,
   ApiQuery,
   ApiResponse,
@@ -18,10 +21,24 @@ import {
   ApiBody,
   ApiParam,
 } from '@nestjs/swagger';
+import type { Request } from 'express';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums/role.enum';
+import { JwtAuthGuard } from '../../common/guards/jwt-guards';
+import { RolesGuard } from '../../common/guards/role-guards/roles.guard';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { LaboratoryOptionDto } from './dto/laboratory-option.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+
+type AuthenticatedRequest = Request & {
+  user: {
+    userId: string;
+    role: Role;
+    email?: string;
+  };
+};
 
 @ApiTags('Users')
 @Controller('users')
@@ -77,6 +94,32 @@ export class UsersController {
   })
   findAll() {
     return this.usersService.findAll();
+  }
+
+  @Get('laboratories')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.NUTRICIONISTA, Role.LABORATORIO, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Listar opciones de laboratorio',
+    description:
+      'Retorna usuarios candidatos para selector de laboratorio (activos, verificados y con laboratory informado)',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Busqueda por laboratorio, nombre o email',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Listado de opciones de laboratorio',
+    type: [LaboratoryOptionDto],
+  })
+  listLaboratoryOptions(
+    @Query('search') search: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<LaboratoryOptionDto[]> {
+    return this.usersService.listLaboratoryOptions(search, request.user);
   }
 
   @Get(':id')

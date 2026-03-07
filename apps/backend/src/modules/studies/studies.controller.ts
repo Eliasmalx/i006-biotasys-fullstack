@@ -27,6 +27,7 @@ import { RolesGuard } from '../../common/guards/role-guards/roles.guard';
 import { CreateStudyDto } from './dto/create-study.dto';
 import { ListStudiesQueryDto } from './dto/list-studies-query.dto';
 import { ProcessingResultDto } from './dto/processing-result.dto';
+import { ReassignStudyDto } from './dto/reassign-study.dto';
 import { RejectStudyDto } from './dto/reject-study.dto';
 import {
   PaginatedStudiesResponseDto,
@@ -226,6 +227,33 @@ export class StudiesController {
     @Req() request: AuthenticatedRequest,
   ): Promise<StudyResponseDto> {
     return this.studiesService.rejectStudy(id, dto, request.user);
+  }
+
+  @Patch(':id/reassign')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.LABORATORIO)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Reasignar estudio',
+    description:
+      'Permite reasignar un estudio solo en estados SOLICITADO o RECIBIDO a otro usuario del mismo laboratorio',
+  })
+  @ApiBody({ type: ReassignStudyDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Estudio reasignado',
+    type: StudyResponseDto,
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'No se puede reasignar en el estado actual',
+  })
+  reassignStudy(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: ReassignStudyDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<StudyResponseDto> {
+    return this.studiesService.reassignStudy(id, dto, request.user);
   }
 
   @Post(':id/processing-result')

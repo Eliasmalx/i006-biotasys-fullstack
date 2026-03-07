@@ -15,14 +15,14 @@ import { ApiProperty } from '@nestjs/swagger';
 export class User {
   @ApiProperty({
     example: '550e8400-e29b-41d4-a716-446655440000',
-    description: 'ID único del usuario (UUID)',
+    description: 'ID unico del usuario (UUID)',
   })
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
   @ApiProperty({
     example: 'juan@example.com',
-    description: 'Correo electrónico único',
+    description: 'Correo electronico unico',
   })
   @Column({ unique: true })
   email!: string;
@@ -35,9 +35,13 @@ export class User {
   @Column()
   firstName!: string;
 
-  @ApiProperty({ example: 'Pérez García' })
+  @ApiProperty({ example: 'Perez Garcia' })
   @Column()
   lastName!: string;
+
+  @ApiProperty({ required: false, example: 'BiomeSense' })
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  laboratory?: string | null;
 
   @ApiProperty({ enum: Role, example: Role.NUTRICIONISTA })
   @Column({
