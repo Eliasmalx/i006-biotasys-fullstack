@@ -317,7 +317,8 @@ export class StudiesController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Payload invalido (faltan pdfUrl/file_url o normalizedJson/payload compatible)',
+    description:
+      'Payload invalido (faltan pdfUrl/file_url o normalizedJson/payload compatible)',
   })
   @ApiResponse({ status: 401, description: 'API key invalida' })
   handleProcessingResult(

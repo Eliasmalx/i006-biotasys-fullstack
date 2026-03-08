@@ -55,4 +55,15 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
   @MaxLength(128, { message: 'La contraseña no puede exceder 128 caracteres' })
   password?: string;
+
+  @ApiProperty({
+    example: 'Laboratorio Clínico Central',
+    description: 'Nombre del laboratorio o centro (solo para usuarios laboratorio)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(2, { message: 'El laboratorio debe tener al menos 2 caracteres' })
+  @MaxLength(150, { message: 'El laboratorio no puede exceder 150 caracteres' })
+  laboratory?: string;
 }

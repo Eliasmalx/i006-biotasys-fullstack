@@ -14,17 +14,7 @@ export class EmailService {
   private readonly logger = new Logger(EmailService.name);
 
   constructor() {
-    if (this.isSmtpBypassed()) {
-      this.logger.warn(
-        'SMTP deshabilitado en development. Los emails se omitiran.',
-      );
-      return;
-    }
     this.initializeTransporter();
-  }
-
-  private isSmtpBypassed(): boolean {
-    return config.nodeEnv === 'development';
   }
 
   /**
@@ -59,12 +49,6 @@ export class EmailService {
    */
   async sendEmail(to: string, subject: string, html: string): Promise<void> {
     try {
-      if (this.isSmtpBypassed()) {
-        this.logger.log(
-          `[DEV] Email omitido -> to: ${to}, subject: ${subject}`,
-        );
-        return;
-      }
       if (!this.transporter) {
         throw new Error('Email transporter not initialized');
       }
@@ -94,12 +78,6 @@ export class EmailService {
     html: string,
   ): Promise<void> {
     try {
-      if (this.isSmtpBypassed()) {
-        this.logger.log(
-          `[DEV] Email multiple omitido -> recipients: ${to.length}, subject: ${subject}`,
-        );
-        return;
-      }
       if (!this.transporter) {
         throw new Error('Email transporter not initialized');
       }
@@ -131,12 +109,6 @@ export class EmailService {
     attachments: any[],
   ): Promise<void> {
     try {
-      if (this.isSmtpBypassed()) {
-        this.logger.log(
-          `[DEV] Email con adjuntos omitido -> to: ${to}, subject: ${subject}, attachments: ${attachments.length}`,
-        );
-        return;
-      }
       if (!this.transporter) {
         throw new Error('Email transporter not initialized');
       }
