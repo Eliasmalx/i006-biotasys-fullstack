@@ -2,185 +2,160 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Input } from "../../components/common/Input";
 import { Button } from "../../components/common/Button";
-import { User } from "../../types";
 import { api } from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"nutricionista" | "laboratorista" | null>(null);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!role) {
+      setError("Debes seleccionar un perfil antes de iniciar sesión");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
       const response = await api.login({ email, password });
+
       login(response.user, response.accessToken);
-      navigate("/dashboard");
+
+      if (role === "nutricionista") {
+        navigate("/dashboard");
+      } else {
+        navigate("/dashboardLaboratory");
+      }
+
     } catch (err: any) {
-      setError(err.message || "An unexpected error occurred");
+      setError(err.message || "Ocurrió un error inesperado");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-  <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-white">
+    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-white">
 
+      {/* Columna izquierda */}
+      <div className="flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white backdrop-blur-xl border p-8 rounded-2xl shadow-2xl">
 
-    {/* Columna izquierda: Login */}
-    <div className="flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white backdrop-blur-xl border  p-8 rounded-2xl shadow-2xl">
-
-          {/* --- LOGIN COMPLETO --- */}
-          <div className="flex flex-col items-center mb-8">
-            
-            <h1 className="text-3xl font-bold text-black mb-5">Acceder a tu cuenta</h1>
-            <p className="text-slate-400 text-black">
-              Empieza a gestionar y unificar datos de microbiota intestinas de forma integrada
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-lg flex items-center gap-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="w-5 h-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
-                  />
-                </svg>
-                {error}
-              </div>
-            )}
-
-            <Input
-              
-              placeholder="Email corporativo"
-              type="email"
-              required
-              disabled={isLoading}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="bg-white text-gray-900 placeholder-gray-400 border border-gray-300"
-              icon={
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="w-5 h-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
-                  />
-                </svg>
-              }
-            />
-
-            <Input
-              
-              placeholder="Contraseña/Credenciales"
-              type="password"
-              required
-              disabled={isLoading}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-white text-gray-900 placeholder-gray-400 border border-gray-300"
-              icon={
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="w-5 h-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z"
-                  />
-                </svg>
-              }
-            />
-
-            <div className="flex items-center justify-between">
-            
-              <Link
-                to ="/passwoedRecovery"
-                className="text-sm text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
-              >
-                ¿Haz olvidado tu contraseña?
-              </Link>
+            <div className="flex flex-col items-center mb-8">
+              <h1 className="text-3xl font-bold text-black mb-5">Acceder a tu cuenta</h1>
+              <p className="text-slate-400 text-black">
+                Empieza a gestionar y unificar datos de microbiota intestinal
+              </p>
             </div>
 
-            <Button type="submit" 
-                    className="w-full mt-4" 
-                    isLoading={isLoading}>
-              Iniciar sesión
-            </Button>
-          </form>
-
-          <div className="mt-8 pt-6 border-t border-slate-800 text-center">
-            <p className="text-slate-400 text-sm">
-              No tienes una cuenta?{" "}
-              <Link
-                to="/dashboardLaboratory"
-                className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors"
+            {/* Selección de rol */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div
+                onClick={() => setRole("nutricionista")}
+                className={`cursor-pointer border rounded-xl p-4 text-center transition 
+                ${role === "nutricionista" ? "border-indigo-500 bg-indigo-50" : "border-gray-300"}`}
               >
-                Crear cuenta
-              </Link>
-            </p>
-          </div>
+                <h3 className="font-semibold text-black">Nutricionista</h3>
+                <p className="text-sm text-gray-500">Alta de pacientes y generación de informes</p>
+              </div>
 
+              <div
+                onClick={() => setRole("laboratorista")}
+                className={`cursor-pointer border rounded-xl p-4 text-center transition 
+                ${role === "laboratorista" ? "border-indigo-500 bg-indigo-50" : "border-gray-300"}`}
+              >
+                <h3 className="font-semibold text-black">Laboratorista</h3>
+                <p className="text-sm text-gray-500">Carga de resultados para el nutricionista</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-lg">
+                  {error}
+                </div>
+              )}
+
+              <Input
+                placeholder="Email corporativo"
+                type="email"
+                required
+                disabled={isLoading}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="bg-white text-gray-900 placeholder-gray-400 border border-gray-300"
+              />
+
+              <Input
+                placeholder="Contraseña / Credenciales"
+                type="password"
+                required
+                disabled={isLoading}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="bg-white text-gray-900 placeholder-gray-400 border border-gray-300"
+              />
+
+              <div className="flex items-center justify-between">
+                <Link
+                  to="/passwordRecovery"
+                  className="text-sm text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+                >
+                  ¿Has olvidado tu contraseña?
+                </Link>
+              </div>
+
+              <Button type="submit" className="w-full mt-4" isLoading={isLoading}>
+                Iniciar sesión
+              </Button>
+            </form>
+
+            <div className="mt-8 pt-6 border-t border-slate-800 text-center">
+              <p className="text-slate-400 text-sm">
+                ¿No tienes una cuenta?{" "}
+                <Link
+                  to="/dashboardLaboratory"
+                  className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors"
+                >
+                  Crear cuenta
+                </Link>
+              </p>
+            </div>
+
+          </div>
         </div>
       </div>
+
+      {/* Columna derecha */}
+      <div
+        className="hidden md:flex items-start justify-start p-0 
+        bg-[url('https://images.pexels.com/photos/281260/pexels-photo-281260.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500')] 
+        bg-cover bg-center opacity-90 w-full h-full flex-col"
+      >
+        <div className="flex flex-col text-left max-w-md mt-20 ml-10">
+          <h1 className="text-white text-5xl font-bold drop-shadow-lg">Biotays</h1>
+          <h2 className="text-white text-xl mt-2 drop-shadow-md">Soporte a la decisión clínica</h2>
+          <p className="text-white text-base mt-4 drop-shadow">
+            El soporte digital especializado en el análisis IA de microbiota y generación de informes.
+          </p>
+        </div>
+      </div>
+
     </div>
-
-    {/* Columna derecha: Imagen */}
-    <div
-  className="hidden md:flex items-start justify-start p-0 
-             bg-[url('https://images.pexels.com/photos/281260/pexels-photo-281260.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500')] 
-             bg-cover bg-center opacity-90 w-full h-full flex-col"
->
-  <div className="flex flex-col text-left max-w-md mt-20 ml-10">
-    <h1 className="text-white text-5xl font-bold drop-shadow-lg">
-      Biotays
-    </h1>
-
-    <h2 className="text-white text-xl mt-2 drop-shadow-md">
-      Soporte a la decisión clínica
-    </h2>
-
-    <p className="text-white text-base mt-4 drop-shadow">
-      El soporte digital especializado en el análisis IA de microbiota y generación de informes estructurados y consistentes.
-    </p>
-  </div>
-</div>
-
-  </div>
-);
-
-
+  );
 };
 
 export default Login;
+

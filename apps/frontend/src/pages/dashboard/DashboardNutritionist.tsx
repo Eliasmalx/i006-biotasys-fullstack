@@ -112,16 +112,16 @@ export const DashboardNutritionist = () => {
 
 
       {/* Search + Filters */}
-      <div className="flex items-center justify-between gap-4 mb-6 bg-white">
+      <div className="flex items-center justify-between gap-4 mb-6">
         <input
           type="text"
           placeholder="Por paciente (PCT-...) o código de estudio (BIO-...)"
-          className="flex-1 max-w-md border border-gray-300 rounded-lg px-4 py-2 shadow-sm text-gray-800"
+          className="flex-1 max-w-md border border-gray-300 rounded-lg px-4 py-2 shadow-sm text-gray-800 bg-white"
         />
 
         <div className="flex gap-4">
           <select
-            className="border border-gray-300 px-3 py-2 rounded-lg text-gray-800"
+            className="border border-gray-300 px-3 py-2 rounded-lg text-gray-800 bg-white"
             value={resultadoFilter}
             onChange={(e) => setResultadoFilter(e.target.value)}
           >
@@ -132,7 +132,7 @@ export const DashboardNutritionist = () => {
           </select>
 
           <select
-            className="border border-gray-300 px-3 py-2 rounded-lg text-gray-800"
+            className="border border-gray-300 px-3 py-2 rounded-lg text-gray-800 bg-white"
             value={laboratorioFilter}
             onChange={(e) => setLaboratorioFilter(e.target.value)}
           >
@@ -141,7 +141,7 @@ export const DashboardNutritionist = () => {
           </select>
 
           <select
-            className="border border-gray-300 px-3 py-2 rounded-lg text-gray-800"
+            className="border border-gray-300 px-3 py-2 rounded-lg text-gray-800 bg-white"
             value={estadoFilter}
             onChange={(e) => setEstadoFilter(e.target.value)}
           >
@@ -154,7 +154,7 @@ export const DashboardNutritionist = () => {
 
           <input
             type="date"
-            className="border border-gray-300 px-3 py-2 rounded-lg text-gray-800"
+            className="border border-gray-300 px-3 py-2 rounded-lg text-gray-800 bg-white"
             value={fechaFilter}
             onChange={(e) => setFechaFilter(e.target.value)}
           />

@@ -31,18 +31,18 @@ export const DashboardLaboratory = () => {
 
       {/* Search bar */}
       {/* Search + Filters en una sola fila */}
-<div className="flex items-center justify-between gap-4 mb-6 bg-white">
+<div className="flex items-center justify-between gap-4 mb-6">
 
   {/* Search bar */}
   <input
     type="text"
     placeholder="Por paciente (PCT-...), código de estudio (BIO-...), código de origen (LAB-...)"
-    className="flex-1 max-w-md border border-gray-300 rounded-lg px-4 py-2 shadow-sm text-gray-800"
+    className="flex-1 max-w-md border border-gray-300 rounded-lg px-4 py-2 shadow-sm text-gray-800 bg-white"
   />
 
   {/* Filters */}
   <div className="flex gap-4">
-    <select className="border border-gray-300 px-3 py-2 rounded-lg text-gray-800">
+    <select className="border border-gray-300 px-3 py-2 rounded-lg text-gray-800 bg-white">
       <option>Estado</option>
       <option>Validado</option>
       <option>Recibido</option>
@@ -53,7 +53,7 @@ export const DashboardLaboratory = () => {
     <div className="relative">
   <input
     type="date"
-    className="peer border border-gray-300 px-3 py-2 rounded-lg text-gray-800 w-40"
+    className="peer border border-gray-300 px-3 py-2 rounded-lg text-gray-800 w-40 bg-white"
   />
   <span
     className="absolute left-3 top-2 text-gray-400 pointer-events-none 
