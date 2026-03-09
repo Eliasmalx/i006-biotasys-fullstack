@@ -1,9 +1,12 @@
+export type Role = "NUTRICIONISTA" | "LABORATORIO";
+
 export interface User {
   id: string;
   email: string;
   username: string;
   name: string;
   avatar?: string;
+  role: Role; 
 }
 
 export interface AuthState {
