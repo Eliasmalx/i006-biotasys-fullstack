@@ -11,7 +11,6 @@ const Login: React.FC = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"nutricionista" | "laboratorista" | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,23 +18,22 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!role) {
-      setError("Debes seleccionar un perfil antes de iniciar sesión");
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 
     try {
       const response = await api.login({ email, password });
 
+      // Guardamos usuario + token
       login(response.user, response.accessToken);
 
-      if (role === "nutricionista") {
+      // Navegación automática según rol real del backend
+      if (response.user.role === "NUTRICIONISTA") {
         navigate("/dashboard");
-      } else {
+      } else if (response.user.role === "LABORATORIO") {
         navigate("/dashboardLaboratory");
+      } else {
+        setError("Tu rol no tiene un dashboard asignado");
       }
 
     } catch (err: any) {
@@ -58,27 +56,6 @@ const Login: React.FC = () => {
               <p className="text-slate-400 text-black">
                 Empieza a gestionar y unificar datos de microbiota intestinal
               </p>
-            </div>
-
-            {/* Selección de rol */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div
-                onClick={() => setRole("nutricionista")}
-                className={`cursor-pointer border rounded-xl p-4 text-center transition 
-                ${role === "nutricionista" ? "border-indigo-500 bg-indigo-50" : "border-gray-300"}`}
-              >
-                <h3 className="font-semibold text-black">Nutricionista</h3>
-                <p className="text-sm text-gray-500">Alta de pacientes y generación de informes</p>
-              </div>
-
-              <div
-                onClick={() => setRole("laboratorista")}
-                className={`cursor-pointer border rounded-xl p-4 text-center transition 
-                ${role === "laboratorista" ? "border-indigo-500 bg-indigo-50" : "border-gray-300"}`}
-              >
-                <h3 className="font-semibold text-black">Laboratorista</h3>
-                <p className="text-sm text-gray-500">Carga de resultados para el nutricionista</p>
-              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -158,4 +135,5 @@ const Login: React.FC = () => {
 };
 
 export default Login;
+
 
