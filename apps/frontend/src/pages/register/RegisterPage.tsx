@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { StepCreateAccount } from './StepCreateAccount';
-import { StepPassword } from './StepPassword';
-import { StepVerifyEmail } from './StepVerifyEmail';
+import { StepCreateAccount } from './Stepcreateaccount';
+import { StepPassword } from './Steppassword';
+import { StepVerifyEmail } from './Stepverifyemail';
 import { api } from '../../services/api';
 import './RegisterPage.css';
 
