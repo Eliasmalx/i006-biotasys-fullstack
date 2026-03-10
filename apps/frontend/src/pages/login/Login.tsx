@@ -31,12 +31,14 @@ const Login: React.FC = () => {
 
     try {
       const response = await api.login({
-        email,
-        password,
-        role: selectedRole,
-      });
+           email,
+           password,
+           role: selectedRole,
+           });
 
-      login(response.user, response.accessToken);
+
+       login(response.user, response.accessToken, response.refreshToken);
+
 
       if (selectedRole === "NUTRICIONISTA") {
         navigate("/dashboardNutritionist");
