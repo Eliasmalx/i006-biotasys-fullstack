@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
 import Login from "../pages/login/Login";
-import Register from "../pages/Register";
+import { RegisterPage } from "../pages/register/RegisterPage";
 import Dashboard from "../pages/dashboard/Dashboard";
 import { AcceptInvitationPage } from "../pages/AcceptInvitation";
 import { PasswordRecovery } from "../pages/login/PasswordRecovery";
@@ -28,7 +28,7 @@ export const AppRoutes: React.FC = () => {
         path="/register"
         element={
           <PublicRoute>
-            <Register />
+            <RegisterPage />
           </PublicRoute>
         }
       />
@@ -36,17 +36,17 @@ export const AppRoutes: React.FC = () => {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Navbar/>
+            <Navbar />
             <Dashboard />
           </ProtectedRoute>
         }
       />
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/invitations/accept/:token" element={<AcceptInvitationPage />} />
-      <Route path="/passwoedRecovery" element={<PasswordRecovery />} />
-      <Route path="/passwoedReset" element={<PasswordReset />} />
-      <Route path="/dashboardLaboratory" element={<DashboardNutritionist/>} />
-      
+      <Route path="/passwordRecovery" element={<PasswordRecovery />} />
+      <Route path="/passwordReset" element={<PasswordReset />} />
+      <Route path="/forgotPassword" element={<ForgotPassword />} />
+      <Route path="/dashboardLaboratory" element={<DashboardNutritionist />} />
     </Routes>
   );
 };
