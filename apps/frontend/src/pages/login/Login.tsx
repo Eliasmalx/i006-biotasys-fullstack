@@ -29,7 +29,7 @@ const Login: React.FC = () => {
 
       // Navegación automática según rol real del backend
       if (response.user.role === "NUTRICIONISTA") {
-        navigate("/dashboard");
+        navigate("/dashboardNutritionist");
       } else if (response.user.role === "LABORATORIO") {
         navigate("/dashboardLaboratory");
       } else {
