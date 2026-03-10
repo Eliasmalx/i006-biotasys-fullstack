@@ -4,6 +4,7 @@ import { Input } from "../../components/common/Input";
 import { Button } from "../../components/common/Button";
 import { api } from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
+import { FaUserMd, FaFlask } from "react-icons/fa";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ const Login: React.FC = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [selectedRole, setSelectedRole] = useState<"NUTRICIONISTA" | "LABORATORIO" | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,19 +23,25 @@ const Login: React.FC = () => {
     setIsLoading(true);
     setError(null);
 
-    try {
-      const response = await api.login({ email, password });
+    if (!selectedRole) {
+      setError("Por favor selecciona tu perfil antes de iniciar sesión");
+      setIsLoading(false);
+      return;
+    }
 
-      // Guardamos usuario + token
+    try {
+      const response = await api.login({
+        email,
+        password,
+        role: selectedRole,
+      });
+
       login(response.user, response.accessToken);
 
-      // Navegación automática según rol real del backend
-      if (response.user.role === "NUTRICIONISTA") {
+      if (selectedRole === "NUTRICIONISTA") {
         navigate("/dashboardNutritionist");
-      } else if (response.user.role === "LABORATORIO") {
-        navigate("/dashboardLaboratory");
       } else {
-        setError("Tu rol no tiene un dashboard asignado");
+        navigate("/dashboardLaboratory");
       }
 
     } catch (err: any) {
@@ -56,6 +64,33 @@ const Login: React.FC = () => {
               <p className="text-slate-400 text-black">
                 Empieza a gestionar y unificar datos de microbiota intestinal
               </p>
+            </div>
+
+            {/* Selector de rol */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+
+              {/* Nutricionista */}
+              <div
+                onClick={() => setSelectedRole("NUTRICIONISTA")}
+                className={`cursor-pointer border rounded-xl p-4 text-center transition flex flex-col items-center
+                  ${selectedRole === "NUTRICIONISTA" ? "border-indigo-500 bg-indigo-50" : "border-gray-300"}`}
+              >
+                <FaUserMd className="text-3xl text-indigo-600 mb-2" />
+                <h3 className="font-semibold text-black">Nutricionista</h3>
+                <p className="text-sm text-gray-500">Alta de pacientes y generación de informes</p>
+              </div>
+
+              {/* Laboratorista */}
+              <div
+                onClick={() => setSelectedRole("LABORATORIO")}
+                className={`cursor-pointer border rounded-xl p-4 text-center transition flex flex-col items-center
+                  ${selectedRole === "LABORATORIO" ? "border-indigo-500 bg-indigo-50" : "border-gray-300"}`}
+              >
+                <FaFlask className="text-3xl text-indigo-600 mb-2" />
+                <h3 className="font-semibold text-black">Laboratorista</h3>
+                <p className="text-sm text-gray-500">Carga de resultados para el nutricionista</p>
+              </div>
+
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -135,5 +170,6 @@ const Login: React.FC = () => {
 };
 
 export default Login;
+
 
 
