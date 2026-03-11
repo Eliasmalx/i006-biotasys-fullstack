@@ -40,7 +40,7 @@ export const AppRoutes: React.FC = () => {
       <Route
         path="/dashboardNutritionist"
         element={
-          <ProtectedRoute role="NUTRICIONISTA">
+          <ProtectedRoute role="nutricionista">
             <Navbar />
             <DashboardNutritionist />
           </ProtectedRoute>
@@ -51,9 +51,9 @@ export const AppRoutes: React.FC = () => {
       <Route
         path="/studies/new"
         element={
-          
+          <ProtectedRoute role="nutricionista">
             <CreateStudyPage />
-  
+           </ProtectedRoute>
         }
       />
 

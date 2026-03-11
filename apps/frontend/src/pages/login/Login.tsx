@@ -140,7 +140,7 @@ const Login: React.FC = () => {
               <p className="text-slate-400 text-sm">
                 ¿No tienes una cuenta?{" "}
                 <Link
-                  to="/dashboardLaboratory"
+                  to="/register"
                   className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors"
                 >
                   Crear cuenta
