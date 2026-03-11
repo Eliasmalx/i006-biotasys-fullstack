@@ -18,6 +18,7 @@ import { ListStudiesQueryDto } from './dto/list-studies-query.dto';
 import { RejectStudyDto } from './dto/reject-study.dto';
 import { UploadStudyJsonDto } from './dto/upload-study-json.dto';
 import { ProcessingResultDto } from './dto/processing-result.dto';
+import { ReassignStudyDto } from './dto/reassign-study.dto';
 import {
   PaginatedStudiesResponseDto,
   StudyResponseDto,
@@ -29,6 +30,7 @@ import { StudyProcessingJob } from './entities/study-processing-job.entity';
 import { StudyCodeSequence } from './entities/study-code-sequence.entity';
 import { AiResult, ExternalAiResult } from './enums/ai-result.enum';
 import { ProcessingJobStatus } from './enums/processing-job-status.enum';
+import { PatientSex } from './enums/patient-sex.enum';
 import { ProcessingState } from './enums/processing-state.enum';
 import { StudyStatus } from './enums/study-status.enum';
 import config from '../../config/dotenv.config';
@@ -36,7 +38,6 @@ import config from '../../config/dotenv.config';
 type AuthenticatedUser = {
   userId: string;
   role: Role;
-  organizationId?: string;
   email?: string;
 };
 
@@ -78,25 +79,37 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
   ): Promise<StudyResponseDto> {
     this.assertRole(currentUser, Role.NUTRICIONISTA);
 
-    // Verificar que el laboratorio existe y tiene el rol correcto
-    const laboratory = await this.userRepository.findOne({
+    const assigneeUser = await this.userRepository.findOne({
       where: {
-        id: dto.laboratoryId,
-        role: Role.LABORATORIO,
+        id: dto.assigneeUserId,
       },
     });
 
-    if (!laboratory) {
-      throw new BadRequestException('Laboratorio no encontrado o inválido');
+    if (!assigneeUser) {
+      throw new BadRequestException('Usuario asignado no encontrado');
     }
 
-    const studyCode = await this.generateStudyCode(currentUser.userId);
+    if (!assigneeUser.isActive) {
+      throw new BadRequestException('Usuario asignado inactivo');
+    }
+
+    if (!assigneeUser.emailVerified) {
+      throw new BadRequestException('Usuario asignado con email no verificado');
+    }
+
+    if (!this.normalizeLaboratory(assigneeUser.laboratory)) {
+      throw new BadRequestException(
+        'Usuario asignado sin laboratorio/centro configurado',
+      );
+    }
+
+    const studyCode = await this.generateStudyCode();
     const now = new Date();
 
     const study = this.studyRepository.create({
       studyCode,
       nutritionistId: currentUser.userId,
-      laboratoryId: dto.laboratoryId,
+      assigneeUserId: dto.assigneeUserId,
       patientCode: dto.patientCode,
       patientAge: dto.patientAge,
       patientSex: dto.patientSex,
@@ -291,6 +304,95 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     return this.toStudyResponse(saved, true);
   }
 
+  async reassignStudy(
+    studyId: string,
+    dto: ReassignStudyDto,
+    currentUser: AuthenticatedUser,
+  ): Promise<StudyResponseDto> {
+    this.assertRole(currentUser, Role.LABORATORIO);
+
+    const actor = await this.userRepository.findOne({
+      where: { id: currentUser.userId },
+    });
+    if (!actor) {
+      throw new NotFoundException('Usuario autenticado no encontrado');
+    }
+
+    const actorLaboratory = this.normalizeLaboratory(actor.laboratory);
+    if (!actorLaboratory) {
+      throw new ForbiddenException(
+        'Usuario laboratorio sin centro/laboratorio configurado',
+      );
+    }
+
+    const study = await this.studyRepository.findOne({
+      where: { id: studyId },
+      relations: ['nutritionist', 'assignee'],
+    });
+    if (!study) {
+      throw new NotFoundException('Estudio no encontrado');
+    }
+
+    if (![StudyStatus.SOLICITADO, StudyStatus.RECIBIDO].includes(study.status)) {
+      throw new ConflictException(
+        'Solo se puede reasignar en estados SOLICITADO o RECIBIDO',
+      );
+    }
+
+    const currentAssigneeLaboratory = this.normalizeLaboratory(
+      study.assignee?.laboratory,
+    );
+    if (!currentAssigneeLaboratory || currentAssigneeLaboratory !== actorLaboratory) {
+      throw new ForbiddenException(
+        'Solo puedes reasignar estudios de tu mismo laboratorio',
+      );
+    }
+
+    if (dto.assigneeUserId === study.assigneeUserId) {
+      throw new ConflictException('El estudio ya esta asignado a ese usuario');
+    }
+
+    const targetUser = await this.userRepository.findOne({
+      where: { id: dto.assigneeUserId },
+    });
+    if (!targetUser) {
+      throw new BadRequestException('Usuario destino no encontrado');
+    }
+    if (!targetUser.isActive) {
+      throw new BadRequestException('Usuario destino inactivo');
+    }
+    if (!targetUser.emailVerified) {
+      throw new BadRequestException('Usuario destino con email no verificado');
+    }
+
+    const targetLaboratory = this.normalizeLaboratory(targetUser.laboratory);
+    if (!targetLaboratory) {
+      throw new BadRequestException(
+        'Usuario destino sin laboratorio/centro configurado',
+      );
+    }
+    if (targetLaboratory !== actorLaboratory) {
+      throw new BadRequestException(
+        'Usuario destino no pertenece al mismo laboratorio',
+      );
+    }
+
+    const previousAssigneeEmail = study.assignee?.email ?? study.assigneeUserId;
+    study.assigneeUserId = targetUser.id;
+    study.assignee = targetUser;
+
+    const saved = await this.studyRepository.save(study);
+    await this.createStatusHistory({
+      studyId: saved.id,
+      fromStatus: saved.status,
+      toStatus: saved.status,
+      changedByUserId: currentUser.userId,
+      note: `Reasignado de ${previousAssigneeEmail} a ${targetUser.email}`,
+    });
+
+    return this.toStudyResponse(saved, true);
+  }
+
   async uploadStudyRawJson(
     studyId: string,
     dto: UploadStudyJsonDto,
@@ -298,11 +400,21 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
   ): Promise<{ message: string; study: StudyResponseDto }> {
     const study = await this.getLaboratoryStudyOrFail(studyId, currentUser);
 
-    if (study.status !== StudyStatus.EN_ANALISIS) {
+    const allowedStatuses = [
+      StudyStatus.SOLICITADO,
+      StudyStatus.RECIBIDO,
+      StudyStatus.EN_ANALISIS,
+      StudyStatus.RECHAZADO,
+    ];
+    if (!allowedStatuses.includes(study.status)) {
       throw new ConflictException(
-        'Solo se puede cargar JSON cuando el estudio esta EN_ANALISIS',
+        'No se puede cargar JSON en el estado actual del estudio',
       );
     }
+
+    this.validateRawJsonAgainstStudy(dto.rawJson, study);
+
+    const fromStatus = study.status;
 
     study.rawJson = dto.rawJson;
     study.processingState = ProcessingState.PENDING;
@@ -310,7 +422,22 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     study.processingAttempts = 0;
     study.lastProcessingAt = null;
 
+    if (study.status === StudyStatus.RECHAZADO) {
+      study.rejectionReason = null;
+      study.rejectedAt = null;
+    }
+
     const savedStudy = await this.studyRepository.save(study);
+
+    if (fromStatus !== savedStudy.status) {
+      await this.createStatusHistory({
+        studyId: savedStudy.id,
+        fromStatus,
+        toStatus: savedStudy.status,
+        changedByUserId: currentUser.userId,
+        note: 'Analisis iniciado por carga de JSON',
+      });
+    }
 
     await this.studyProcessingJobRepository.update(
       {
@@ -353,7 +480,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
   ): Promise<StudyResponseDto> {
     const study = await this.studyRepository.findOne({
       where: { id: studyId },
-      relations: ['nutritionist', 'laboratory'],
+      relations: ['nutritionist', 'assignee'],
     });
 
     if (!study) {
@@ -362,21 +489,29 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
 
     const fromStatus = study.status;
     const now = new Date();
+    const resolvedPdfUrl = dto.pdfUrl ?? dto.file_url;
+    const resolvedNormalizedJson = this.resolveNormalizedJson(dto);
 
-    study.pdfUrl = dto.pdfUrl;
-    study.normalizedJson = dto.normalizedJson;
+    if (!resolvedPdfUrl) {
+      throw new BadRequestException('pdfUrl o file_url es requerido');
+    }
+
+    if (!resolvedNormalizedJson) {
+      throw new BadRequestException(
+        'normalizedJson o payload IA en snake_case es requerido',
+      );
+    }
+
+    study.pdfUrl = resolvedPdfUrl;
+    study.normalizedJson = resolvedNormalizedJson;
     study.aiResult = this.mapExternalAiResult(dto.aiResult);
     study.processingState = ProcessingState.SUCCESS;
     study.processingError = null;
     study.lastProcessingAt = now;
-
-    if (
-      study.status !== StudyStatus.RECHAZADO &&
-      study.status !== StudyStatus.INFORME_LISTO
-    ) {
-      study.status = StudyStatus.INFORME_LISTO;
-      study.completedAt = now;
-    }
+    study.status = StudyStatus.INFORME_LISTO;
+    study.completedAt = now;
+    study.rejectionReason = null;
+    study.rejectedAt = null;
 
     const saved = await this.studyRepository.save(study);
     await this.studyProcessingJobRepository.update(
@@ -464,16 +599,34 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
         status: ProcessingJobStatus.COMPLETED,
         lastError: null,
       });
+
+      const now = new Date();
+      const shouldMoveToAnalysis = study.status !== StudyStatus.EN_ANALISIS;
       await this.studyRepository.update(study.id, {
+        status: StudyStatus.EN_ANALISIS,
         processingState: ProcessingState.PENDING,
         processingError: null,
         processingAttempts: job.attempt + 1,
-        lastProcessingAt: new Date(),
+        lastProcessingAt: now,
+        rejectionReason: null,
+        rejectedAt: null,
+        analysisStartedAt: study.analysisStartedAt ?? now,
       });
+
+      if (shouldMoveToAnalysis) {
+        await this.createStatusHistory({
+          studyId: study.id,
+          fromStatus: study.status,
+          toStatus: StudyStatus.EN_ANALISIS,
+          changedByUserId: null,
+          note: 'Enviado correctamente al backend Python',
+        });
+      }
     } catch (error: unknown) {
       const errorMessage = this.getErrorMessage(error);
       const nextAttempt = job.attempt + 1;
       const maxRetries = Math.max(1, config.ai.maxRetries);
+      const now = new Date();
 
       if (nextAttempt >= maxRetries) {
         await this.studyProcessingJobRepository.update(job.id, {
@@ -481,6 +634,29 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
           attempt: nextAttempt,
           lastError: errorMessage,
         });
+
+        const technicalReason = `IA_PROCESSING_FAILED: ${errorMessage.slice(0, 300)}`;
+        const fromStatus = study.status;
+
+        await this.studyRepository.update(study.id, {
+          status: StudyStatus.RECHAZADO,
+          rejectedAt: now,
+          rejectionReason: technicalReason,
+          processingState: ProcessingState.ERROR,
+          processingError: errorMessage,
+          processingAttempts: nextAttempt,
+          lastProcessingAt: now,
+        });
+
+        if (fromStatus !== StudyStatus.RECHAZADO) {
+          await this.createStatusHistory({
+            studyId: study.id,
+            fromStatus,
+            toStatus: StudyStatus.RECHAZADO,
+            changedByUserId: null,
+            note: 'Rechazo automatico por fallo de IA tras agotar reintentos',
+          });
+        }
       } else {
         await this.studyProcessingJobRepository.update(job.id, {
           status: ProcessingJobStatus.PENDING,
@@ -488,14 +664,14 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
           runAt: this.calculateBackoffRunAt(nextAttempt),
           lastError: errorMessage,
         });
-      }
 
-      await this.studyRepository.update(study.id, {
-        processingState: ProcessingState.ERROR,
-        processingError: errorMessage,
-        processingAttempts: nextAttempt,
-        lastProcessingAt: new Date(),
-      });
+        await this.studyRepository.update(study.id, {
+          processingState: ProcessingState.ERROR,
+          processingError: errorMessage,
+          processingAttempts: nextAttempt,
+          lastProcessingAt: now,
+        });
+      }
 
       this.logger.error(
         `Error procesando estudio ${study.studyCode}: ${errorMessage}`,
@@ -509,22 +685,19 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     }
 
     const timeoutMs = config.ai.requestTimeoutMs;
-    const backendBase =
-      config.ai.backendPublicUrl || `http://localhost:${config.port}`;
-    const callbackUrl = `${backendBase.replace(/\/$/, '')}/api/studies/${study.id}/processing-result`;
-
     const payload = {
-      studyId: study.id,
-      studyCode: study.studyCode,
-      rawJson: study.rawJson,
-      callbackUrl,
+      study_code: study.studyCode,
+      nutricionist_id: study.nutritionistId,
+      patient_id: study.patientCode,
+      raw_json: study.rawJson,
+      study_date: this.toIsoDateTime(study.studyDate),
     };
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
     if (config.ai.serviceApiKey) {
-      headers['X-API-Key'] = config.ai.serviceApiKey;
+      headers['X-API-KEY'] = config.ai.serviceApiKey;
     }
 
     const abortController = new AbortController();
@@ -564,9 +737,9 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    if (query.laboratoryId) {
-      qb.andWhere('study.laboratoryId = :laboratoryId', {
-        laboratoryId: query.laboratoryId,
+    if (query.assigneeUserId) {
+      qb.andWhere('study.assigneeUserId = :assigneeUserId', {
+        assigneeUserId: query.assigneeUserId,
       });
     }
 
@@ -609,7 +782,6 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     return {
       id: study.id,
       studyCode: study.studyCode,
-      organizationId: study.organizationId,
       patientCode: study.patientCode,
       patientAge: study.patientAge,
       patientSex: study.patientSex,
@@ -636,8 +808,8 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       nutritionist: study.nutritionist
         ? this.toStudyUserSummary(study.nutritionist)
         : undefined,
-      laboratory: study.laboratory
-        ? this.toStudyUserSummary(study.laboratory)
+      assignee: study.assignee
+        ? this.toStudyUserSummary(study.assignee)
         : undefined,
     };
   }
@@ -657,10 +829,147 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
         return AiResult.EQUILIBRADA;
       case ExternalAiResult.ALTERADA:
         return AiResult.ALTERADA;
+      case ExternalAiResult.INCONCLUSA:
+        return AiResult.INCONCLUSA;
+      case ExternalAiResult.CRITICA:
+        return AiResult.CRITICA;
       case ExternalAiResult.SIN_RESULTADO:
       default:
         return AiResult.SIN_RESULTADO;
     }
+  }
+
+  private resolveNormalizedJson(
+    dto: ProcessingResultDto,
+  ): Record<string, unknown> | null {
+    if (dto.normalizedJson && this.isNonEmptyObject(dto.normalizedJson)) {
+      return dto.normalizedJson;
+    }
+
+    const externalPayload: Record<string, unknown> = {};
+
+    if (dto.study_code) externalPayload.study_code = dto.study_code;
+    if (dto.nutricionist) externalPayload.nutricionist = dto.nutricionist;
+    if (dto.patient) externalPayload.patient = dto.patient;
+    if (dto.data) externalPayload.data = dto.data;
+    if (dto.interpretation)
+      externalPayload.interpretation = dto.interpretation;
+    if (dto.study_date) externalPayload.study_date = dto.study_date;
+    if (dto.report_date) externalPayload.report_date = dto.report_date;
+    if (dto.processingMeta) externalPayload.processingMeta = dto.processingMeta;
+
+    if (!this.isNonEmptyObject(externalPayload)) {
+      return null;
+    }
+
+    return externalPayload;
+  }
+
+  private isNonEmptyObject(value: Record<string, unknown>): boolean {
+    return Object.keys(value).length > 0;
+  }
+
+  private normalizeLaboratory(value?: string | null): string | null {
+    if (!value) return null;
+    const normalized = value.trim().toLowerCase();
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private validateRawJsonAgainstStudy(
+    rawJson: Record<string, unknown>,
+    study: Study,
+  ): void {
+    const rawPatientCode = this.getRawJsonString(rawJson, 'patientCode');
+    if (!rawPatientCode) {
+      throw new BadRequestException('rawJson.patientCode es requerido');
+    }
+    if (rawPatientCode !== study.patientCode) {
+      throw new BadRequestException(
+        'rawJson.patientCode no coincide con el estudio',
+      );
+    }
+
+    const rawPatientAge = this.getRawJsonNumber(rawJson, 'patientAge');
+    if (rawPatientAge === null) {
+      throw new BadRequestException('rawJson.patientAge es requerido');
+    }
+    if (rawPatientAge !== study.patientAge) {
+      throw new BadRequestException(
+        'rawJson.patientAge no coincide con el estudio',
+      );
+    }
+
+    const rawPatientSex = this.getRawJsonString(rawJson, 'patientSex');
+    if (!rawPatientSex) {
+      throw new BadRequestException('rawJson.patientSex es requerido');
+    }
+    const normalizedSex = rawPatientSex.trim().toUpperCase();
+    if (!Object.values(PatientSex).includes(normalizedSex as PatientSex)) {
+      throw new BadRequestException(
+        'rawJson.patientSex invalido. Valores permitidos: MASCULINO, FEMENINO',
+      );
+    }
+    if (normalizedSex !== study.patientSex) {
+      throw new BadRequestException(
+        'rawJson.patientSex no coincide con el estudio',
+      );
+    }
+
+    const rawStudyDate = this.getRawJsonString(rawJson, 'studyDate');
+    if (!rawStudyDate) {
+      throw new BadRequestException('rawJson.studyDate es requerido');
+    }
+    const normalizedStudyDate = this.normalizeToDateOnly(rawStudyDate);
+    if (!normalizedStudyDate) {
+      throw new BadRequestException(
+        'rawJson.studyDate invalido. Usa formato YYYY-MM-DD o ISO 8601',
+      );
+    }
+    if (normalizedStudyDate !== study.studyDate) {
+      throw new BadRequestException(
+        'rawJson.studyDate no coincide con el estudio',
+      );
+    }
+  }
+
+  private getRawJsonString(
+    rawJson: Record<string, unknown>,
+    key: string,
+  ): string | null {
+    const value = rawJson[key];
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private getRawJsonNumber(
+    rawJson: Record<string, unknown>,
+    key: string,
+  ): number | null {
+    const value = rawJson[key];
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string' && value.trim().length > 0) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  }
+
+  private normalizeToDateOnly(value: string): string | null {
+    const trimmed = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed;
+    }
+
+    const parsed = new Date(trimmed);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    return parsed.toISOString().slice(0, 10);
+  }
+
+  private toIsoDateTime(dateOnly: string): string {
+    return new Date(`${dateOnly}T00:00:00.000Z`).toISOString();
   }
 
   private async getLaboratoryStudyOrFail(
@@ -674,7 +983,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
         id: studyId,
         laboratoryId: currentUser.userId,
       },
-      relations: ['nutritionist', 'laboratory'],
+      relations: ['nutritionist', 'assignee'],
     });
 
     if (!study) {
@@ -688,13 +997,6 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     if (currentUser.role !== expectedRole) {
       throw new ForbiddenException('No tienes permisos para esta operacion');
     }
-  }
-
-  private getOrganizationIdOrFail(currentUser: AuthenticatedUser): string {
-    if (!currentUser.organizationId) {
-      throw new ForbiddenException('Usuario sin organizacion asignada');
-    }
-    return currentUser.organizationId;
   }
 
   private async createStatusHistory(params: {
@@ -715,7 +1017,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     await this.studyStatusHistoryRepository.save(history);
   }
 
-  private async generateStudyCode(organizationId: string): Promise<string> {
+  private async generateStudyCode(): Promise<string> {
     for (let attempt = 0; attempt < 5; attempt++) {
       const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
@@ -723,13 +1025,13 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
 
       try {
         let sequence = await queryRunner.manager.findOne(StudyCodeSequence, {
-          where: { organizationId },
+          where: { key: 'global' },
           lock: { mode: 'pessimistic_write' },
         });
 
         if (!sequence) {
           sequence = queryRunner.manager.create(StudyCodeSequence, {
-            organizationId,
+            key: 'global',
             currentValue: 0,
           });
         }
@@ -762,7 +1064,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
   }
 
   private calculateBackoffRunAt(attempt: number): Date {
-    const delayMs = Math.pow(2, attempt) * 1000;
+    const delayMs = Math.max(1000, config.ai.retryDelayMs);
     return new Date(Date.now() + delayMs);
   }
 

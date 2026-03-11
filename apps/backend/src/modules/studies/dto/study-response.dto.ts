@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Role } from '../../../common/enums/role.enum';
 import { AiResult } from '../enums/ai-result.enum';
 import { PatientSex } from '../enums/patient-sex.enum';
@@ -15,8 +15,14 @@ export class StudyUserSummaryDto {
   @ApiProperty({ example: 'Elena Mendoza' })
   fullName!: string;
 
-  @ApiProperty({ enum: Role, example: Role.NUTRICIONISTA })
-  role!: Role;
+  @ApiPropertyOptional({
+    enum: Role,
+    nullable: true,
+    example: null,
+    description:
+      'Rol persistido en BD (puede ser null). El rol operativo real se selecciona en login',
+  })
+  role?: Role | null;
 }
 
 export class StudyResponseDto {
@@ -50,40 +56,40 @@ export class StudyResponseDto {
   @ApiProperty({ enum: ProcessingState, example: ProcessingState.PENDING })
   processingState!: ProcessingState;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional()
   processingError?: string | null;
 
-  @ApiProperty({ required: false, example: 'https://cdn.biotasys.com/reports/BIO-AR-56321.pdf' })
+  @ApiPropertyOptional({ example: 'https://cdn.biotasys.com/reports/BIO-AR-56321.pdf' })
   pdfUrl?: string | null;
 
-  @ApiProperty({ required: false, type: Object })
+  @ApiPropertyOptional({ type: Object })
   normalizedJson?: Record<string, unknown> | null;
 
-  @ApiProperty({ required: false, type: Object })
+  @ApiPropertyOptional({ type: Object })
   rawJson?: Record<string, unknown> | null;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional()
   rejectionReason?: string | null;
 
   @ApiProperty({ example: 0 })
   processingAttempts!: number;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional()
   lastProcessingAt?: Date | null;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional()
   requestedAt?: Date | null;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional()
   receivedAt?: Date | null;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional()
   analysisStartedAt?: Date | null;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional()
   completedAt?: Date | null;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional()
   rejectedAt?: Date | null;
 
   @ApiProperty()
@@ -92,11 +98,29 @@ export class StudyResponseDto {
   @ApiProperty()
   updatedAt!: Date;
 
-  @ApiProperty({ type: StudyUserSummaryDto, required: false })
+  @ApiPropertyOptional({
+    type: StudyUserSummaryDto,
+    example: {
+      id: '7ec2c8ca-c633-43ea-95dc-02af73ad2018',
+      email: 'nutri@biotasys.com',
+      firstName: 'Elena',
+      lastName: 'Mendoza',
+      role: Role.NUTRICIONISTA,
+    },
+  })
   nutritionist?: StudyUserSummaryDto;
 
-  @ApiProperty({ type: StudyUserSummaryDto, required: false })
-  laboratory?: StudyUserSummaryDto;
+  @ApiPropertyOptional({
+    type: StudyUserSummaryDto,
+    example: {
+      id: 'c5e37fca-fd20-4e59-843d-4ea0dc350907',
+      email: 'laboperator@biotasys.com',
+      firstName: 'Daniela',
+      lastName: 'Romero',
+      role: Role.LABORATORIO,
+    },
+  })
+  assignee?: StudyUserSummaryDto;
 }
 
 export class PaginatedStudiesResponseDto {

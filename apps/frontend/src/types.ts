@@ -1,10 +1,16 @@
+export type Role = "NUTRICIONISTA" | "LABORATORIO";
+
 export interface User {
   id: string;
   email: string;
-  username: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  role: Role;
   avatar?: string;
+  laboratory?: string;       
+  organizationId?: string;   
 }
+
 
 export interface AuthState {
   user: User | null;

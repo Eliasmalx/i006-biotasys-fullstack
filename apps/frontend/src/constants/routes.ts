@@ -6,9 +6,10 @@ export const ROUTES = {
 } as const;
 
 export const API_ENDPOINTS = {
-  BASE: 'http://localhost:3000/api',
+  BASE: 'http://localhost:3000',
   AUTH: {
     LOGIN: '/auth/login',
+    LOGOUT: "/auth/logout",
     REGISTER: '/auth/register',
   },
   HEALTH: '/health',

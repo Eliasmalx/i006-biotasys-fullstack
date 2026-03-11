@@ -26,18 +26,18 @@ export class CreateUserDto {
 
   @ApiProperty({
     example: 'juan@example.com',
-    description: 'Correo electrónico único',
+    description: 'Correo electronico unico',
   })
-  @IsEmail({}, { message: 'Correo electrónico inválido' })
+  @IsEmail({}, { message: 'Correo electronico invalido' })
   email!: string;
 
   @ApiProperty({
     example: 'SecurePass123!',
-    description: 'Contraseña (mínimo 8 caracteres)',
+    description: 'Contrasena (minimo 8 caracteres)',
   })
   @IsString()
-  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
-  @MaxLength(128, { message: 'La contraseña no puede exceder 128 caracteres' })
+  @MinLength(8, { message: 'La contrasena debe tener al menos 8 caracteres' })
+  @MaxLength(128, { message: 'La contrasena no puede exceder 128 caracteres' })
   password!: string;
 
   @ApiProperty({

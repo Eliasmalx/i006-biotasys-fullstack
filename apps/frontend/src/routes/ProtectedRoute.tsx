@@ -1,17 +1,19 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import React from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   redirectTo?: string;
+  role?: "NUTRICIONISTA" | "LABORATORIO"; // ← AÑADIDO
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
-  redirectTo = '/login' 
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  redirectTo = "/login",
+  role,
 }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (
@@ -24,7 +26,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  return isAuthenticated ? <>{children}</> : <Navigate to={redirectTo} replace />;
+  // Si no está autenticado → login
+  if (!isAuthenticated || !user) {
+    return <Navigate to={redirectTo} replace />;
+  }
+
+  // Si la ruta requiere un rol y el usuario no lo tiene → login
+  if (role && user.role !== role) {
+    return <Navigate to={redirectTo} replace />;
+  }
+
+  return <>{children}</>;
 };
 
 export default ProtectedRoute;
+

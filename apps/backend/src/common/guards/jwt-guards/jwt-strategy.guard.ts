@@ -14,7 +14,6 @@ export interface JwtPayload {
   sub: string;
   email: string;
   role: Role;
-  organizationId?: string;
   iat: number;
   exp: number;
 }
@@ -23,7 +22,6 @@ export interface AuthenticatedUser {
   userId: string;
   email: string;
   role: Role;
-  organizationId?: string;
 }
 
 @Injectable()
@@ -42,7 +40,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   /**
-   * Obtiene el JWT secret con validación en producción
+   * Obtiene el JWT secret con validacion en produccion
    */
   private static getJwtSecret(): string {
     const secret = config.jwtSecret;
@@ -50,7 +48,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!secret || secret === 'default-secret') {
       if (process.env.NODE_ENV === 'production') {
         throw new Error(
-          'JWT_SECRET no está definido. Variable de entorno requerida en producción.',
+          'JWT_SECRET no esta definido. Variable de entorno requerida en produccion.',
         );
       }
     }
@@ -62,49 +60,36 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * Valida el payload del JWT contra la base de datos
    * @param payload Payload decodificado del JWT
    * @returns Los datos del usuario autenticado con los permisos actualizados
-   * @throws UnauthorizedException si el usuario no existe, está inactivo, su org es inválida, o su rol cambió
+   * @throws UnauthorizedException si el usuario no existe, esta inactivo, o su rol cambio
    */
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
     const user = await this.userRepository.findOne({
       where: { id: payload.sub },
-      relations: ['organization'], // Traer org para validar su estado
     });
 
-    // Validar que el usuario existe
     if (!user) {
-      this.logger.warn(`Token inválido: usuario ${payload.sub} no encontrado`);
+      this.logger.warn(`Token invalido: usuario ${payload.sub} no encontrado`);
       throw new UnauthorizedException(
-        'Token no válido - usuario no encontrado',
+        'Token no valido - usuario no encontrado',
       );
     }
 
-    // Validar que el usuario está activo
     if (!user.isActive) {
       this.logger.warn(`Acceso denegado para usuario inactivo: ${user.id}`);
       throw new UnauthorizedException('Usuario inactivo - acceso denegado');
     }
 
-    // Validar organizationId
-    if (!user.organizationId) {
-      this.logger.warn(`Usuario sin organización asignada: ${user.id}`);
-      throw new UnauthorizedException('Usuario no tiene organización asignada');
-    }
-
-    // Validar que el rol no ha cambiado (seguridad contra cambios de roles sin reautenticación)
     if (payload.role && payload.role !== user.role) {
       this.logger.warn(
-        `Rol cambió para usuario ${user.id}: ${payload.role} → ${user.role}`,
+        `Rol cambio para usuario ${user.id}: ${payload.role} -> ${user.role}`,
       );
-      throw new UnauthorizedException('Rol cambió - por favor reautentícate');
+      throw new UnauthorizedException('Rol cambio - por favor reautenticate');
     }
 
-    // Retorna los datos del usuario autenticado
-    // Este objeto se asigna a req.user en el contexto de la request
     return {
       userId: user.id,
       email: user.email,
       role: user.role,
-      organizationId: user.organizationId,
     };
   }
 }

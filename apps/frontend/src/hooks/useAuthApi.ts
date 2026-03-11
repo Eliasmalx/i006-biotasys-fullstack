@@ -12,13 +12,15 @@ export const useAuthApi = () => {
     throw new Error('useAuthApi.login requires credentials');
   }, []);
 
-  const register = useCallback(async (userData: { name: string; email: string; password: string }) => {
-    return api.register(userData);
-  }, []);
+  const register = useCallback(() => {
+  throw new Error("El backend no soporta registro directo. Usa accept-invitation.");
+}, []);
+
 
   const login = useCallback(async (credentials: { email: string; password: string }) => {
-    return api.login(credentials);
-  }, []);
+  return api.login(credentials); // devuelve { accessToken, user }
+}, []);
+
 
   const checkHealth = useCallback(() => {
     return api.checkHealth();

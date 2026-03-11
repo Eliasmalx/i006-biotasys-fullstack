@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "../components/common/Button";
-import { User } from "../types";
-import { api } from "../services/api";
-import { useAuth } from "../hooks/useAuth";
+import { Button } from "../../components/common/Button";
+import { User } from "../../types";
+import { api } from "../../services/api";
+import { useAuth } from "../../hooks/useAuth";
 
 export const PasswordReset: React.FC = () => {
   const navigate = useNavigate();
@@ -20,7 +20,7 @@ export const PasswordReset: React.FC = () => {
 
     try {
       const response = await api.login({ email, password });
-      login(response.user);
+      login(response.user, response.accessToken);
       navigate("/dashboard");
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");
