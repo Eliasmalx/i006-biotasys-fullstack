@@ -4,6 +4,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
 import Login from "../pages/login/Login";
 import { RegisterPage } from "../pages/register/RegisterPage";
+import { CreateStudyPage } from "../pages/studies/CreateStudy";
 import { DashboardNutritionist } from "../pages/dashboard/DashboardNutritionist";
 import { DashboardLaboratory } from "../pages/dashboard/DashboardLaboratory";
 import { AcceptInvitationPage } from "../pages/AcceptInvitation";
@@ -43,6 +44,16 @@ export const AppRoutes: React.FC = () => {
             <Navbar />
             <DashboardNutritionist />
           </ProtectedRoute>
+        }
+      />
+
+      {/* Crear nuevo estudio (Nutricionista) */}
+      <Route
+        path="/studies/new"
+        element={
+          
+            <CreateStudyPage />
+  
         }
       />
 

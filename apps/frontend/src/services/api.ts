@@ -14,10 +14,6 @@ export const api = {
      AUTH
   ------------------------------------------------------- */
 
-  /**
-   * Register a new user.
-   * Matches backend CreateUserDto: { firstName, lastName, email, password, laboratory? }
-   */
   async register(data: {
     firstName: string;
     lastName: string;
@@ -49,11 +45,9 @@ export const api = {
     );
 
     const result = await response.json();
-
     if (!response.ok) {
       throw new Error(result.message || "Login failed");
     }
-
     return result;
   },
 
@@ -69,7 +63,60 @@ export const api = {
   },
 
   /* -------------------------------------------------------
-   STUDIES — LABORATORIO
+     USERS — LABORATORY OPTIONS
+  ------------------------------------------------------- */
+
+  async listLaboratoryOptions(search?: string): Promise<
+    Array<{
+      userId: string;
+      laboratory: string;
+      fullName: string;
+      email: string;
+    }>
+  > {
+    const queryObj: Record<string, string> = {};
+    if (search) queryObj.search = search;
+
+    const query = new URLSearchParams(queryObj);
+    const url = `${API_ENDPOINTS.BASE}/users/laboratories${query.toString() ? `?${query.toString()}` : ''}`;
+
+    const response = await fetch(url, {
+      headers: authHeaders(),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || "Error al obtener laboratorios");
+    }
+    return result;
+  },
+
+  /* -------------------------------------------------------
+     STUDIES — CREATE
+  ------------------------------------------------------- */
+
+  async createStudy(data: {
+    patientCode: string;
+    patientAge: number;
+    patientSex: 'MASCULINO' | 'FEMENINO';
+    studyDate: string;
+    assigneeUserId: string;
+  }) {
+    const response = await fetch(`${API_ENDPOINTS.BASE}/studies`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || "Error al crear el estudio");
+    }
+    return result;
+  },
+
+  /* -------------------------------------------------------
+     STUDIES — LABORATORIO
   ------------------------------------------------------- */
 
   async listLaboratoryOrders(params: {
@@ -96,7 +143,6 @@ export const api = {
     if (!response.ok) {
       throw new Error(result.message || "Error al obtener órdenes");
     }
-
     return result;
   },
 
@@ -128,45 +174,35 @@ export const api = {
     );
 
     const result = await response.json();
-
     if (!response.ok) {
       throw new Error(result.message || "Error al obtener estudios");
     }
-
     return result;
   },
 
   async markAsReceived(id: string) {
     const response = await fetch(
       `${API_ENDPOINTS.BASE}/studies/${id}/receive`,
-      {
-        method: "PATCH",
-        headers: authHeaders(),
-      }
+      { method: "PATCH", headers: authHeaders() }
     );
 
     const result = await response.json();
     if (!response.ok) {
       throw new Error(result.message || "Error al marcar como recibido");
     }
-
     return result;
   },
 
   async startAnalysis(id: string) {
     const response = await fetch(
       `${API_ENDPOINTS.BASE}/studies/${id}/start-analysis`,
-      {
-        method: "PATCH",
-        headers: authHeaders(),
-      }
+      { method: "PATCH", headers: authHeaders() }
     );
 
     const result = await response.json();
     if (!response.ok) {
       throw new Error(result.message || "Error al iniciar análisis");
     }
-
     return result;
   },
 
@@ -184,7 +220,6 @@ export const api = {
     if (!response.ok) {
       throw new Error(result.message || "Error al subir JSON del estudio");
     }
-
     return result;
   },
 
@@ -202,7 +237,6 @@ export const api = {
     if (!response.ok) {
       throw new Error(result.message || "Error al rechazar estudio");
     }
-
     return result;
   },
 
@@ -220,23 +254,19 @@ export const api = {
     if (!response.ok) {
       throw new Error(result.message || "Error al reasignar estudio");
     }
-
     return result;
   },
 
   async getStudyById(id: string) {
     const response = await fetch(
       `${API_ENDPOINTS.BASE}/studies/${id}`,
-      {
-        headers: authHeaders(),
-      }
+      { headers: authHeaders() }
     );
 
     const result = await response.json();
     if (!response.ok) {
       throw new Error(result.message || "Error al obtener detalle del estudio");
     }
-
     return result;
   },
 };
