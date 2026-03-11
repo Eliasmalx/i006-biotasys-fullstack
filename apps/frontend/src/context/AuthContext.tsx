@@ -4,10 +4,11 @@ import { storage } from "../utils/storage";
 
 interface AuthContextType {
   authState: AuthState;
-  login: (user: User, token: string) => void;
+  login: (user: User, accessToken: string, refreshToken: string) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  refreshToken: string | null;
 }
 
 type AuthAction =
@@ -20,6 +21,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
     case "SET_LOADING":
       return { ...state, loading: action.payload };
+
     case "SET_USER":
       return {
         user: action.payload,
@@ -27,12 +29,14 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         loading: false,
         error: null,
       };
+
     case "SET_ERROR":
       return {
         ...state,
         error: action.payload,
         loading: false,
       };
+
     case "LOGOUT":
       return {
         user: null,
@@ -40,6 +44,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         loading: false,
         error: null,
       };
+
     default:
       return state;
   }
@@ -47,9 +52,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authState, dispatch] = useReducer(authReducer, {
     user: null,
     isAuthenticated: false,
@@ -57,25 +60,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     error: null,
   });
 
+  // Nuevo estado para refreshToken
+  const [refreshToken, setRefreshToken] = React.useState<string | null>(
+    localStorage.getItem("refreshToken")
+  );
+
   useEffect(() => {
     const savedUser = storage.getUser();
-    if (savedUser) {
+    const savedToken = storage.getToken();
+    const savedRefresh = localStorage.getItem("refreshToken");
+
+    if (savedUser && savedToken && savedRefresh) {
       dispatch({ type: "SET_USER", payload: savedUser });
+      setRefreshToken(savedRefresh);
     } else {
       dispatch({ type: "SET_LOADING", payload: false });
     }
   }, []);
 
-  const login = (user: User, token: string) => {
-  storage.setUser(user);
-  storage.setToken(token);
+  const login = (user: User, accessToken: string, refreshToken: string) => {
+    storage.setUser(user);
+    storage.setToken(accessToken);
+    localStorage.setItem("refreshToken", refreshToken);
 
-  dispatch({ type: "SET_USER", payload: user });
-};
+    setRefreshToken(refreshToken);
 
+    dispatch({ type: "SET_USER", payload: user });
+  };
 
   const logout = () => {
     storage.clear();
+    localStorage.removeItem("refreshToken");
+    setRefreshToken(null);
+
     dispatch({ type: "LOGOUT" });
   };
 
@@ -95,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         logout,
         setLoading,
         setError,
+        refreshToken,
       }}
     >
       {children}
@@ -104,8 +122,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
+

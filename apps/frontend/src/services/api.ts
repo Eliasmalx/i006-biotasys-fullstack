@@ -34,22 +34,45 @@ export const api = {
     return result;
   },
 
-  async login(data: any): Promise<{ user: User; accessToken: string }> {
-    const response = await fetch(
-      `${API_ENDPOINTS.BASE}${API_ENDPOINTS.AUTH.LOGIN}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }
-    );
-
-    const result = await response.json();
-    if (!response.ok) {
-      throw new Error(result.message || "Login failed");
+  async login(data: any): Promise<{ user: User; accessToken: string; refreshToken: string }> {
+  const response = await fetch(
+    `${API_ENDPOINTS.BASE}${API_ENDPOINTS.AUTH.LOGIN}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     }
-    return result;
-  },
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.message || "Login failed");
+  }
+
+  return result; 
+},
+
+
+  async logout(data: { refreshToken: string }): Promise<{ message: string }> {
+  const response = await fetch(
+    `${API_ENDPOINTS.BASE}${API_ENDPOINTS.AUTH.LOGOUT}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.message || "Error al cerrar sesión");
+  }
+
+  return result;
+},
+
 
   async checkHealth(): Promise<boolean> {
     try {
