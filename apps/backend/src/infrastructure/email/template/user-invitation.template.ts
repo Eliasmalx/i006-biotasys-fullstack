@@ -48,10 +48,16 @@ export function generateUserInvitationEmail(data: UserInvitationData): string {
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         .header {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #A1B2FF;
           color: white;
           padding: 30px 20px;
           text-align: center;
+          border-radius: 8px 8px 0 0;
+        }
+        .header img {
+          max-width: 150px;
+          height: auto;
+          margin-bottom: 15px;
         }
         .header h1 {
           font-size: 28px;
@@ -77,7 +83,7 @@ export function generateUserInvitationEmail(data: UserInvitationData): string {
         }
         .organization-box {
           background-color: #f9f9f9;
-          border-left: 4px solid #667eea;
+          border-left: 4px solid #A1B2FF;
           padding: 15px 20px;
           margin-bottom: 25px;
           border-radius: 4px;
@@ -87,12 +93,12 @@ export function generateUserInvitationEmail(data: UserInvitationData): string {
           font-size: 14px;
         }
         .organization-box strong {
-          color: #667eea;
+          color: #A1B2FF;
         }
         .role-badge {
           display: inline-block;
           background-color: #e8eaf6;
-          color: #667eea;
+          color: #A1B2FF;
           padding: 8px 12px;
           border-radius: 4px;
           font-size: 12px;
@@ -101,7 +107,7 @@ export function generateUserInvitationEmail(data: UserInvitationData): string {
         }
         .cta-button {
           display: inline-block;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #A1B2FF;
           color: white;
           padding: 14px 40px;
           border-radius: 6px;
@@ -158,7 +164,7 @@ export function generateUserInvitationEmail(data: UserInvitationData): string {
           font-size: 13px;
         }
         .features h4 {
-          color: #667eea;
+          color: #A1B2FF;
           margin-bottom: 10px;
           font-size: 14px;
         }
@@ -181,7 +187,7 @@ export function generateUserInvitationEmail(data: UserInvitationData): string {
           margin: 5px 0;
         }
         .footer-links a {
-          color: #667eea;
+          color: #A1B2FF;
           text-decoration: none;
           margin: 0 10px;
         }
@@ -191,6 +197,7 @@ export function generateUserInvitationEmail(data: UserInvitationData): string {
       <div class="container">
         <!-- Header -->
         <div class="header">
+          <img src="https://i.wpfc.ml/8n/gml890.png" alt="Biotasys Logo" />
           <h1>🔐 Biotasys</h1>
           <p>Invitación de Usuario</p>
         </div>

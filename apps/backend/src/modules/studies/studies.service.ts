@@ -144,8 +144,8 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     const qb = this.studyRepository
       .createQueryBuilder('study')
       .leftJoinAndSelect('study.nutritionist', 'nutritionist')
-      .leftJoinAndSelect('study.assignee', 'assignee')
-      .andWhere('study.nutritionistId = :nutritionistId', {
+      .leftJoinAndSelect('study.laboratory', 'laboratory')
+      .where('study.nutritionistId = :nutritionistId', {
         nutritionistId: currentUser.userId,
       });
 
@@ -170,9 +170,9 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     const qb = this.studyRepository
       .createQueryBuilder('study')
       .leftJoinAndSelect('study.nutritionist', 'nutritionist')
-      .leftJoinAndSelect('study.assignee', 'assignee')
-      .where('study.assigneeUserId = :assigneeUserId', {
-        assigneeUserId: currentUser.userId,
+      .leftJoinAndSelect('study.laboratory', 'laboratory')
+      .where('study.laboratoryId = :laboratoryId', {
+        laboratoryId: currentUser.userId,
       });
 
     this.applyCommonFilters(qb, query);
@@ -189,18 +189,17 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     studyId: string,
     currentUser: AuthenticatedUser,
   ): Promise<StudyResponseDto> {
-    const whereBase = { id: studyId };
     let study: Study | null = null;
 
     if (currentUser.role === Role.NUTRICIONISTA) {
       study = await this.studyRepository.findOne({
-        where: { ...whereBase, nutritionistId: currentUser.userId },
-        relations: ['nutritionist', 'assignee'],
+        where: { id: studyId, nutritionistId: currentUser.userId },
+        relations: ['nutritionist', 'laboratory'],
       });
     } else if (currentUser.role === Role.LABORATORIO) {
       study = await this.studyRepository.findOne({
-        where: { ...whereBase, assigneeUserId: currentUser.userId },
-        relations: ['nutritionist', 'assignee'],
+        where: { id: studyId, laboratoryId: currentUser.userId },
+        relations: ['nutritionist', 'laboratory'],
       });
     } else {
       throw new ForbiddenException('Rol no autorizado para consultar estudios');
@@ -686,22 +685,19 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     }
 
     const timeoutMs = config.ai.requestTimeoutMs;
-    const backendBase =
-      config.ai.backendPublicUrl || `http://localhost:${config.port}`;
-    const callbackUrl = `${backendBase.replace(/\/$/, '')}/api/studies/${study.id}/processing-result`;
-
     const payload = {
-      studyId: study.id,
-      studyCode: study.studyCode,
-      rawJson: study.rawJson,
-      callbackUrl,
+      study_code: study.studyCode,
+      nutricionist_id: study.nutritionistId,
+      patient_id: study.patientCode,
+      raw_json: study.rawJson,
+      study_date: this.toIsoDateTime(study.studyDate),
     };
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
     if (config.ai.serviceApiKey) {
-      headers['X-API-Key'] = config.ai.serviceApiKey;
+      headers['X-API-KEY'] = config.ai.serviceApiKey;
     }
 
     const abortController = new AbortController();
@@ -822,8 +818,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     return {
       id: user.id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      fullName: user.fullName,
       role: user.role,
     };
   }
@@ -973,6 +968,10 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     return parsed.toISOString().slice(0, 10);
   }
 
+  private toIsoDateTime(dateOnly: string): string {
+    return new Date(`${dateOnly}T00:00:00.000Z`).toISOString();
+  }
+
   private async getLaboratoryStudyOrFail(
     studyId: string,
     currentUser: AuthenticatedUser,
@@ -982,7 +981,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     const study = await this.studyRepository.findOne({
       where: {
         id: studyId,
-        assigneeUserId: currentUser.userId,
+        laboratoryId: currentUser.userId,
       },
       relations: ['nutritionist', 'assignee'],
     });

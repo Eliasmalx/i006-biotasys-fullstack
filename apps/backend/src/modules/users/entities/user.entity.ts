@@ -31,13 +31,9 @@ export class User {
   @Exclude()
   password!: string;
 
-  @ApiProperty({ example: 'Juan' })
+  @ApiProperty({ example: 'Juan Pérez García' })
   @Column()
-  firstName!: string;
-
-  @ApiProperty({ example: 'Perez Garcia' })
-  @Column()
-  lastName!: string;
+  fullName!: string;
 
   @ApiProperty({ required: false, example: 'BiomeSense' })
   @Column({ type: 'varchar', length: 120, nullable: true })
@@ -65,6 +61,14 @@ export class User {
   @ApiProperty({ required: false })
   @Column({ type: 'timestamp', nullable: true })
   lastLoginAt?: Date;
+
+  @ApiProperty({
+    example: 'Laboratorio Central',
+    required: false,
+    description: 'Nombre del laboratorio (opcional)',
+  })
+  @Column({ type: 'varchar', nullable: true })
+  laboratory?: string;
 
   @ApiProperty()
   @CreateDateColumn()

@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import {
   Injectable,
   BadRequestException,
@@ -13,6 +16,7 @@ import { User } from './entities/user.entity';
 import { EmailVerificationToken } from './entities/email-verification-token.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { LaboratoryOptionDto } from './dto/laboratory-option.dto';
 import { EmailService } from '../../infrastructure/email/services/email.service';
@@ -81,7 +85,7 @@ export class UsersService {
       // Enviar email de verificación
       await this.emailService.sendEmailVerificationEmail(
         savedUser.email,
-        savedUser.firstName,
+        savedUser.fullName,
         verificationLink,
         this.VERIFICATION_TOKEN_EXPIRY_MINUTES,
       );
@@ -199,6 +203,16 @@ export class UsersService {
         throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
       }
 
+      // Validar contraseña actual (requerida para seguridad)
+      const isPasswordValid = await bcrypt.compare(
+        updateUserDto.currentPassword,
+        user.password,
+      );
+
+      if (!isPasswordValid) {
+        throw new BadRequestException('La contraseña actual es incorrecta');
+      }
+
       // Guardar email original para comparar si cambió
       const originalEmail = user.email;
       let emailChanged = false;
@@ -219,12 +233,8 @@ export class UsersService {
       }
 
       // Actualizar campos permitidos
-      if (updateUserDto.firstName) {
-        user.firstName = updateUserDto.firstName;
-      }
-
-      if (updateUserDto.lastName) {
-        user.lastName = updateUserDto.lastName;
+      if (updateUserDto.fullName) {
+        user.fullName = updateUserDto.fullName;
       }
 
       if (updateUserDto.laboratory !== undefined) {
@@ -237,16 +247,24 @@ export class UsersService {
         user.emailVerified = false;
       }
 
-      // Hash de la nueva contraseña si se proporciona
-      if (updateUserDto.password) {
-        user.password = await bcrypt.hash(updateUserDto.password, 10);
+      if (updateUserDto.laboratory) {
+        user.laboratory = updateUserDto.laboratory;
       }
 
       // Guardar cambios
       const updatedUser = await this.userRepository.save(user);
 
-      // Si el email cambió, enviar nuevo email de verificación
+      // Si el email cambió, enviar notificaciones
       if (emailChanged) {
+        // Enviar email de notificación al correo antiguo
+        await this.emailService.sendEmailChangedNotification(
+          originalEmail,
+          updatedUser.fullName,
+          originalEmail,
+          updatedUser.email,
+        );
+
+        // Generar y enviar token de verificación al nuevo correo
         const verificationToken = await this.generateVerificationToken(
           updatedUser.id,
         );
@@ -255,13 +273,14 @@ export class UsersService {
 
         await this.emailService.sendEmailVerificationEmail(
           updatedUser.email,
-          updatedUser.firstName,
+          updatedUser.fullName,
           verificationLink,
           this.VERIFICATION_TOKEN_EXPIRY_MINUTES,
         );
       }
 
-      return this.mapUserToResponseDto(updatedUser);
+      // Si cambió email, incluir flag para logout en respuesta
+      return this.mapUserToResponseDto(updatedUser, emailChanged);
     } catch (error) {
       if (
         error instanceof NotFoundException ||
@@ -276,6 +295,80 @@ export class UsersService {
 
       console.error('Error updating user:', error);
       throw new BadRequestException('Error al actualizar el usuario');
+    }
+  }
+
+  /**
+   * Cambia la contraseña del usuario
+   * @param id ID del usuario
+   * @param changePasswordDto Datos de cambio de contraseña
+   * @returns Respuesta de éxito
+   * @throws BadRequestException si la contraseña actual es incorrecta o las nuevas contraseñas no coinciden
+   * @throws NotFoundException si el usuario no existe
+   */
+  async changePassword(
+    id: string,
+    changePasswordDto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id },
+      });
+
+      if (!user) {
+        throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+      }
+
+      // Validar que las nuevas contraseñas coincidan
+      if (changePasswordDto.newPassword !== changePasswordDto.confirmPassword) {
+        throw new BadRequestException('Las nuevas contraseñas no coinciden');
+      }
+
+      // Validar contraseña actual
+      const isPasswordValid = await bcrypt.compare(
+        changePasswordDto.currentPassword,
+        user.password,
+      );
+
+      if (!isPasswordValid) {
+        throw new BadRequestException('La contraseña actual es incorrecta');
+      }
+
+      // Validar que la nueva contraseña sea diferente a la actual
+      const isSamePassword = await bcrypt.compare(
+        changePasswordDto.newPassword,
+        user.password,
+      );
+
+      if (isSamePassword) {
+        throw new BadRequestException(
+          'La nueva contraseña debe ser diferente a la contraseña actual',
+        );
+      }
+
+      // Hash de la nueva contraseña
+      const hashedPassword = await bcrypt.hash(
+        changePasswordDto.newPassword,
+        10,
+      );
+
+      // Actualizar contraseña
+      user.password = hashedPassword;
+      await this.userRepository.save(user);
+
+      this.logger.log(`Contraseña cambio para usuario ${user.email}`);
+
+      return { message: 'Contraseña actualizada exitosamente' };
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      console.error('Error changing password:', error);
+      throw new BadRequestException('Error al cambiar la contraseña');
     }
   }
 
@@ -380,19 +473,23 @@ export class UsersService {
   /**
    * Mapea una entidad User a UserResponseDto
    */
-  private mapUserToResponseDto(user: User): UserResponseDto {
+  private mapUserToResponseDto(
+    user: User,
+    requiresLogout = false,
+  ): UserResponseDto {
     const responseDto = new UserResponseDto();
     responseDto.id = user.id;
     responseDto.email = user.email;
-    responseDto.firstName = user.firstName;
-    responseDto.lastName = user.lastName;
-    responseDto.laboratory = user.laboratory ?? null;
+    responseDto.fullName = user.fullName;
     responseDto.role = user.role;
     responseDto.isActive = user.isActive;
     responseDto.emailVerified = user.emailVerified;
     responseDto.lastLoginAt = user.lastLoginAt;
     responseDto.createdAt = user.createdAt;
     responseDto.updatedAt = user.updatedAt;
+    if (requiresLogout) {
+      responseDto.requiresLogout = true;
+    }
     return responseDto;
   }
 

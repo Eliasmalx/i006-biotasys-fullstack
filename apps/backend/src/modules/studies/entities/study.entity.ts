@@ -28,6 +28,10 @@ export class Study {
   @Column({ type: 'varchar', length: 32, unique: true })
   studyCode!: string;
 
+  @ApiProperty({ example: 'd2d3fd1e-6f91-4b2e-b902-8d6578d6a3f1', required: false })
+  @Column({ type: 'uuid', nullable: true })
+  organizationId?: string | null;
+
   @ApiProperty({ example: '7ec2c8ca-c633-43ea-95dc-02af73ad2018' })
   @Column({ type: 'uuid' })
   nutritionistId!: string;

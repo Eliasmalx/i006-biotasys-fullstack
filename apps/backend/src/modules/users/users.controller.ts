@@ -30,6 +30,7 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LaboratoryOptionDto } from './dto/laboratory-option.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 
 type AuthenticatedRequest = Request & {
@@ -144,7 +145,8 @@ export class UsersController {
   @Patch(':id')
   @ApiOperation({
     summary: 'Actualizar usuario',
-    description: 'Actualiza los datos de un usuario existente',
+    description:
+      'Actualiza los datos de un usuario existente (nombre, email, laboratorio)',
   })
   @ApiParam({
     name: 'id',
@@ -162,6 +164,29 @@ export class UsersController {
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
     return this.usersService.update(id, updateUserDto);
+  }
+
+  @Patch(':id/change-password')
+  @ApiOperation({
+    summary: 'Cambiar contraseña',
+    description:
+      'Cambia la contraseña del usuario con validación de contraseña actual',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID del usuario',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiBody({ type: ChangePasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Contraseña actualizada exitosamente',
+  })
+  changePassword(
+    @Param('id') id: string,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    return this.usersService.changePassword(id, changePasswordDto);
   }
 
   @Delete(':id')

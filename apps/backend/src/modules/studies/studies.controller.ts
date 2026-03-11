@@ -191,7 +191,7 @@ export class StudiesController {
   @ApiOperation({
     summary: 'Cargar JSON de estudio',
     description:
-      'Guarda el JSON bruto del laboratorio, valida campos clinicos base y encola su procesamiento asincrono en backend Python',
+      'Guarda el JSON bruto del laboratorio, valida campos clinicos base y encola el envio al backend IA. El envio tecnico saliente se realiza en formato snake_case (study_code, nutricionist_id, patient_id, raw_json, study_date).',
   })
   @ApiBody({ type: UploadStudyJsonDto })
   @ApiResponse({
@@ -280,9 +280,9 @@ export class StudiesController {
     description: 'API key tecnica para callback del backend Python',
   })
   @ApiOperation({
-    summary: 'Callback de procesamiento',
+    summary: 'Callback de procesamiento (legado)',
     description:
-      'Endpoint tecnico consumido por backend Python. Acepta formato camelCase o snake_case y marca el estudio como INFORME_LISTO en exito',
+      'Endpoint tecnico de compatibilidad para callback del backend Python. La integracion principal actual con IA es sincrona.',
   })
   @ApiBody({
     type: ProcessingResultDto,
