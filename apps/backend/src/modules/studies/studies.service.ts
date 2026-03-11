@@ -686,22 +686,19 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     }
 
     const timeoutMs = config.ai.requestTimeoutMs;
-    const backendBase =
-      config.ai.backendPublicUrl || `http://localhost:${config.port}`;
-    const callbackUrl = `${backendBase.replace(/\/$/, '')}/api/studies/${study.id}/processing-result`;
-
     const payload = {
-      studyId: study.id,
-      studyCode: study.studyCode,
-      rawJson: study.rawJson,
-      callbackUrl,
+      study_code: study.studyCode,
+      nutricionist_id: study.nutritionistId,
+      patient_id: study.patientCode,
+      raw_json: study.rawJson,
+      study_date: this.toIsoDateTime(study.studyDate),
     };
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
     if (config.ai.serviceApiKey) {
-      headers['X-API-Key'] = config.ai.serviceApiKey;
+      headers['X-API-KEY'] = config.ai.serviceApiKey;
     }
 
     const abortController = new AbortController();
@@ -971,6 +968,10 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       return null;
     }
     return parsed.toISOString().slice(0, 10);
+  }
+
+  private toIsoDateTime(dateOnly: string): string {
+    return new Date(`${dateOnly}T00:00:00.000Z`).toISOString();
   }
 
   private async getLaboratoryStudyOrFail(
