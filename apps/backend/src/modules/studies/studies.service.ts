@@ -646,8 +646,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     return {
       id: user.id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      fullName: user.fullName,
       role: user.role,
     };
   }

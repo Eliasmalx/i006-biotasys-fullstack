@@ -45,29 +45,25 @@ async function seed() {
     {
       email: 'nutricionista1@seedtest.com',
       password: 'Password123',
-      firstName: 'Carlos',
-      lastName: 'Ruiz',
+      fullName: 'Carlos Ruiz',
       role: Role.NUTRICIONISTA,
     },
     {
       email: 'nutricionista2@seedtest.com',
       password: 'Password123',
-      firstName: 'Ana',
-      lastName: 'García',
+      fullName: 'Ana García',
       role: Role.NUTRICIONISTA,
     },
     {
       email: 'laboratorio1@seedtest.com',
       password: 'Password123',
-      firstName: 'Dr. Pérez',
-      lastName: 'López',
+      fullName: 'Dr. Pérez López',
       role: Role.LABORATORIO,
     },
     {
       email: 'laboratorio2@seedtest.com',
       password: 'Password123',
-      firstName: 'Dra. Martínez',
-      lastName: 'González',
+      fullName: 'Dra. Martínez González',
       role: Role.LABORATORIO,
     },
   ];
@@ -80,8 +76,7 @@ async function seed() {
     const user = userRepository.create({
       email: userData.email,
       password: hashedPassword,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
+      fullName: userData.fullName,
       role: userData.role,
       emailVerified: true, // ✅ Ya verificados para poder hacer login
       isActive: true,
@@ -91,7 +86,7 @@ async function seed() {
 
     console.log(`✅ ${userData.role.toUpperCase()}: ${userData.email}`);
     console.log(`   Contraseña: ${userData.password}`);
-    console.log(`   Nombre: ${userData.firstName} ${userData.lastName}\n`);
+    console.log(`   Nombre: ${userData.fullName}\n`);
   }
 
   console.log('═══════════════════════════════════════════');

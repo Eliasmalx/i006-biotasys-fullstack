@@ -29,8 +29,7 @@ export class LoginResponseDto {
   user!: {
     id: string;
     email: string;
-    firstName: string;
-    lastName: string;
+    fullName: string;
     role: Role;
     organizationId?: string;
   };

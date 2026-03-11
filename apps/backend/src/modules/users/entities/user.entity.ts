@@ -5,8 +5,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
   Index,
-  ManyToOne,
-  JoinColumn,
 } from 'typeorm';
 import { Role } from '../../../common/enums/role.enum';
 import { Exclude } from 'class-transformer';
@@ -34,13 +32,9 @@ export class User {
   @Exclude()
   password!: string;
 
-  @ApiProperty({ example: 'Juan' })
+  @ApiProperty({ example: 'Juan Pérez García' })
   @Column()
-  firstName!: string;
-
-  @ApiProperty({ example: 'Pérez García' })
-  @Column()
-  lastName!: string;
+  fullName!: string;
 
   @ApiProperty({ enum: Role, example: Role.NUTRICIONISTA })
   @Column({
@@ -71,6 +65,14 @@ export class User {
   @ApiProperty({ required: false })
   @Column({ type: 'timestamp', nullable: true })
   lastLoginAt?: Date;
+
+  @ApiProperty({
+    example: 'Laboratorio Central',
+    required: false,
+    description: 'Nombre del laboratorio (opcional)',
+  })
+  @Column({ type: 'varchar', nullable: true })
+  laboratory?: string;
 
   @ApiProperty()
   @CreateDateColumn()

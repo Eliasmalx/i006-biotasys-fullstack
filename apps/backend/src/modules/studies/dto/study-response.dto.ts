@@ -12,11 +12,8 @@ export class StudyUserSummaryDto {
   @ApiProperty({ example: 'nutri@biotasys.com' })
   email!: string;
 
-  @ApiProperty({ example: 'Elena' })
-  firstName!: string;
-
-  @ApiProperty({ example: 'Mendoza' })
-  lastName!: string;
+  @ApiProperty({ example: 'Elena Mendoza' })
+  fullName!: string;
 
   @ApiProperty({ enum: Role, example: Role.NUTRICIONISTA })
   role!: Role;

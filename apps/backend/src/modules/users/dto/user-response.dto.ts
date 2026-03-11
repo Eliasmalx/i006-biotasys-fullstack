@@ -19,11 +19,8 @@ export class UserResponseDto {
   })
   email!: string;
 
-  @ApiProperty({ example: 'Juan', description: 'Nombre del usuario' })
-  firstName!: string;
-
-  @ApiProperty({ example: 'Pérez García', description: 'Apellido del usuario' })
-  lastName!: string;
+  @ApiProperty({ example: 'Juan Pérez García', description: 'Nombre completo del usuario' })
+  fullName!: string;
 
   @ApiProperty({
     enum: Role,
@@ -56,6 +53,13 @@ export class UserResponseDto {
   lastLoginAt?: Date;
 
   @ApiProperty({
+    example: 'Laboratorio Central',
+    required: false,
+    description: 'Nombre del laboratorio',
+  })
+  laboratory?: string;
+
+  @ApiProperty({
     example: '2026-03-03T10:30:00Z',
     description: 'Fecha de creación',
   })
@@ -66,4 +70,11 @@ export class UserResponseDto {
     description: 'Fecha de actualización',
   })
   updatedAt!: Date;
+
+  @ApiProperty({
+    example: false,
+    required: false,
+    description: 'Indica si se requiere logout para completar verificación de email',
+  })
+  requiresLogout?: boolean;
 }

@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
   Logger,
-  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -112,8 +112,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        fullName: user.fullName,
         role,
         organizationId: user.organizationId,
       },
@@ -134,7 +133,6 @@ export class AuthService {
       organizationId: user.organizationId,
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
     return this.jwtService.sign(payload);
   }
 
@@ -324,7 +322,7 @@ export class AuthService {
       // Enviar email
       await this.emailService.sendPasswordResetEmail(
         user.email,
-        user.firstName,
+        user.fullName,
         resetLink,
       );
 

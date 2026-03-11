@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { Transporter } from 'nodemailer';
@@ -192,11 +197,7 @@ export class EmailService {
       expiryMinutes,
     });
 
-    await this.sendEmail(
-      to,
-      'Verifica tu correo electrónico - Biotasys',
-      html,
-    );
+    await this.sendEmail(to, 'Verifica tu correo electrónico - Biotasys', html);
   }
 
   /**
@@ -210,10 +211,34 @@ export class EmailService {
     firstName: string,
     resetLink: string,
   ): Promise<void> {
-    const { passwordResetEmailTemplate } = await import('../template');
+    const { passwordResetEmailTemplate } = await import('../template/index.js');
 
     const html = passwordResetEmailTemplate(resetLink, firstName);
 
     await this.sendEmail(to, '🔐 Restaurar tu contraseña - Biotasys', html);
+  }
+
+  /**
+   * Envía notificación de cambio de email
+   * @param to Email antiguo del usuario
+   * @param fullName Nombre completo del usuario
+   * @param oldEmail Email anterior
+   * @param newEmail Email nuevo
+   */
+  async sendEmailChangedNotification(
+    to: string,
+    fullName: string,
+    oldEmail: string,
+    newEmail: string,
+  ): Promise<void> {
+    const { generateEmailChangedNotificationTemplate } = await import('../template/index.js');
+
+    const html = generateEmailChangedNotificationTemplate({
+      userFullName: fullName,
+      oldEmail,
+      newEmail,
+    });
+
+    await this.sendEmail(to, '⚠️ Notificación: Tu email ha sido cambiado - Biotasys', html);
   }
 }
