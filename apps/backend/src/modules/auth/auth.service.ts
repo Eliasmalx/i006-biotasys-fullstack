@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
   UnauthorizedException,
@@ -11,11 +12,15 @@ import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { User } from '../users/entities/user.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
+import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { Role } from '../../common/enums/role.enum';
 import config from '../../config/dotenv.config';
+import { EmailService } from '../../infrastructure/email/services/email.service';
 
 interface JwtPayload {
   sub: string;
@@ -35,7 +40,7 @@ interface JwtPayload {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly REFRESH_TOKEN_EXPIRY_DAYS = 7;
-  private readonly SWITCHABLE_ROLES = [Role.NUTRICIONISTA, Role.LABORATORIO];
+  private readonly PASSWORD_RESET_TOKEN_EXPIRY_MINUTES = 15;
 
   constructor(
     private readonly jwtService: JwtService,
@@ -43,6 +48,9 @@ export class AuthService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
+    @InjectRepository(PasswordResetToken)
+    private readonly passwordResetTokenRepository: Repository<PasswordResetToken>,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -148,8 +156,16 @@ export class AuthService {
       user,
       targetRole,
       accessToken,
-      refreshToken.token,
-    );
+      refreshToken: refreshToken.token,
+      expiresIn: config.jwtExpiresIn,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role,
+        organizationId: user.organizationId,
+      },
+    };
   }
 
   /**
@@ -165,7 +181,6 @@ export class AuthService {
       role,
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
     return this.jwtService.sign(payload);
   }
 
@@ -303,24 +318,136 @@ export class AuthService {
     }
   }
 
-  private buildLoginResponse(
-    user: User,
-    role: Role,
-    accessToken: string,
-    refreshToken: string,
-  ): LoginResponseDto {
-    return {
-      accessToken,
-      refreshToken,
-      expiresIn: config.jwtExpiresIn,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        laboratory: user.laboratory ?? null,
-        role,
-      },
-    };
+  /**
+   * Genera un token de reseteo de contraseña y envía email
+   * @param dto Contiene el email del usuario
+   * @returns Mensaje de confirmación
+   * @throws NotFoundException si el usuario no existe
+   */
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
+    try {
+      const { email } = dto;
+
+      // Buscar usuario por email (case-insensitive)
+      const user = await this.userRepository.findOne({
+        where: { email: email.toLowerCase() },
+      });
+
+      if (!user) {
+        // Por seguridad, no revelamos si el email existe o no
+        this.logger.warn(`Intento de reset para email no existente: ${email}`);
+        return {
+          message:
+            'Si el email existe en nuestro sistema, recibirás un enlace para restaurar tu contraseña',
+        };
+      }
+
+      // Limpiar tokens previos no utilizados
+      await this.passwordResetTokenRepository.delete({
+        userId: user.id,
+        isUsed: false,
+      });
+
+      // Generar token seguro (64 caracteres hex)
+      const resetToken = randomBytes(32).toString('hex');
+      const expiresAt = new Date(
+        Date.now() + this.PASSWORD_RESET_TOKEN_EXPIRY_MINUTES * 60 * 1000,
+      );
+
+      // Guardar token en BD
+      const tokenEntity = this.passwordResetTokenRepository.create({
+        userId: user.id,
+        token: resetToken,
+        expiresAt,
+        isUsed: false,
+      });
+
+      await this.passwordResetTokenRepository.save(tokenEntity);
+
+      // Construir link de reseteo (el frontend debe capturarlo)
+      const resetLink = `${config.appUrl}/reset-password?token=${resetToken}`;
+
+      // Enviar email
+      await this.emailService.sendPasswordResetEmail(
+        user.email,
+        user.fullName,
+        resetLink,
+      );
+
+      this.logger.log(`Email de reseteo enviado a ${user.email}`);
+
+      return {
+        message:
+          'Si el email existe en nuestro sistema, recibirás un enlace para restaurar tu contraseña',
+      };
+    } catch (error) {
+      this.logger.error('Error en forgotPassword:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Valida y ejecuta el reseteo de contraseña
+   * @param dto Contiene el token y la nueva contraseña
+   * @returns Mensaje de confirmación
+   * @throws BadRequestException si el token es inválido o expirado
+   */
+  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
+    try {
+      const { token, newPassword } = dto;
+
+      // Buscar el token en BD
+      const resetToken = await this.passwordResetTokenRepository.findOne({
+        where: { token },
+        relations: ['user'],
+      });
+
+      if (!resetToken) {
+        throw new BadRequestException('Token de reseteo inválido');
+      }
+
+      // Validar que no esté expirado
+      if (new Date() > resetToken.expiresAt) {
+        // Limpiar token expirado
+        await this.passwordResetTokenRepository.remove(resetToken);
+        throw new BadRequestException(
+          'El enlace de reseteo ha expirado. Solicita uno nuevo',
+        );
+      }
+
+      // Validar que no haya sido utilizado
+      if (resetToken.isUsed) {
+        throw new BadRequestException('Este token ya ha sido utilizado');
+      }
+
+      const user = resetToken.user;
+
+      // Hashear nueva contraseña
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Actualizar contraseña del usuario
+      user.password = hashedPassword;
+      await this.userRepository.save(user);
+
+      // Marcar token como usado
+      resetToken.isUsed = true;
+      await this.passwordResetTokenRepository.save(resetToken);
+
+      this.logger.log(`Contraseña reseteada para usuario ${user.email}`);
+
+      return {
+        message:
+          'Tu contraseña ha sido reseteada correctamente. Por favor, inicia sesión',
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      this.logger.error('Error en resetPassword:', error);
+      throw new BadRequestException(
+        'Error al resetear la contraseña. Intenta de nuevo',
+      );
+    }
   }
 }

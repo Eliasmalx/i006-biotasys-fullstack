@@ -19,11 +19,8 @@ export class UserResponseDto {
   })
   email!: string;
 
-  @ApiProperty({ example: 'Juan', description: 'Nombre del usuario' })
-  firstName!: string;
-
-  @ApiProperty({ example: 'Perez Garcia', description: 'Apellido del usuario' })
-  lastName!: string;
+  @ApiProperty({ example: 'Juan Pérez García', description: 'Nombre completo del usuario' })
+  fullName!: string;
 
   @ApiPropertyOptional({
     example: 'BiomeSense',
@@ -55,6 +52,13 @@ export class UserResponseDto {
   lastLoginAt?: Date;
 
   @ApiProperty({
+    example: 'Laboratorio Central',
+    required: false,
+    description: 'Nombre del laboratorio',
+  })
+  laboratory?: string;
+
+  @ApiProperty({
     example: '2026-03-03T10:30:00Z',
     description: 'Fecha de creacion',
   })
@@ -66,19 +70,10 @@ export class UserResponseDto {
   })
   updatedAt!: Date;
 
-  @ApiPropertyOptional({
-    example:
-      '9F0BC2D15A6B4D6C9E0F1A2B3C4D5E6F7A8B9C0D1E2F3A4B5C6D7E8F9A0B1C2',
-    description:
-      'Token de verificacion (solo desarrollo, no disponible en produccion)',
+  @ApiProperty({
+    example: false,
+    required: false,
+    description: 'Indica si se requiere logout para completar verificación de email',
   })
-  verificationToken?: string;
-
-  @ApiPropertyOptional({
-    example:
-      'http://localhost:3001/auth/verify-email?token=9F0BC2D15A6B4D6C9E0F1A2B3C4D5E6F7A8B9C0D1E2F3A4B5C6D7E8F9A0B1C2',
-    description:
-      'Link de verificacion (solo desarrollo, no disponible en produccion)',
-  })
-  verificationLink?: string;
+  requiresLogout?: boolean;
 }

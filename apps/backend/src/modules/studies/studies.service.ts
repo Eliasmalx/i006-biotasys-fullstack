@@ -144,8 +144,8 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     const qb = this.studyRepository
       .createQueryBuilder('study')
       .leftJoinAndSelect('study.nutritionist', 'nutritionist')
-      .leftJoinAndSelect('study.assignee', 'assignee')
-      .andWhere('study.nutritionistId = :nutritionistId', {
+      .leftJoinAndSelect('study.laboratory', 'laboratory')
+      .where('study.nutritionistId = :nutritionistId', {
         nutritionistId: currentUser.userId,
       });
 
@@ -170,9 +170,9 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     const qb = this.studyRepository
       .createQueryBuilder('study')
       .leftJoinAndSelect('study.nutritionist', 'nutritionist')
-      .leftJoinAndSelect('study.assignee', 'assignee')
-      .where('study.assigneeUserId = :assigneeUserId', {
-        assigneeUserId: currentUser.userId,
+      .leftJoinAndSelect('study.laboratory', 'laboratory')
+      .where('study.laboratoryId = :laboratoryId', {
+        laboratoryId: currentUser.userId,
       });
 
     this.applyCommonFilters(qb, query);
@@ -189,18 +189,17 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     studyId: string,
     currentUser: AuthenticatedUser,
   ): Promise<StudyResponseDto> {
-    const whereBase = { id: studyId };
     let study: Study | null = null;
 
     if (currentUser.role === Role.NUTRICIONISTA) {
       study = await this.studyRepository.findOne({
-        where: { ...whereBase, nutritionistId: currentUser.userId },
-        relations: ['nutritionist', 'assignee'],
+        where: { id: studyId, nutritionistId: currentUser.userId },
+        relations: ['nutritionist', 'laboratory'],
       });
     } else if (currentUser.role === Role.LABORATORIO) {
       study = await this.studyRepository.findOne({
-        where: { ...whereBase, assigneeUserId: currentUser.userId },
-        relations: ['nutritionist', 'assignee'],
+        where: { id: studyId, laboratoryId: currentUser.userId },
+        relations: ['nutritionist', 'laboratory'],
       });
     } else {
       throw new ForbiddenException('Rol no autorizado para consultar estudios');
@@ -819,8 +818,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     return {
       id: user.id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      fullName: user.fullName,
       role: user.role,
     };
   }
@@ -983,7 +981,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     const study = await this.studyRepository.findOne({
       where: {
         id: studyId,
-        assigneeUserId: currentUser.userId,
+        laboratoryId: currentUser.userId,
       },
       relations: ['nutritionist', 'assignee'],
     });

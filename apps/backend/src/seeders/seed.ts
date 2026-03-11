@@ -10,7 +10,7 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 /**
  * Script para crear usuarios ficticios para testing
- * Ejecución: npm run seed
+ * Ejecución: npx ts-node -r tsconfig-paths/register src/seeders/seed.ts
  */
 async function seed() {
   const dataSource = new DataSource({
@@ -30,8 +30,8 @@ async function seed() {
 
   const userRepository = dataSource.getRepository(User);
 
-  // Limpiar usuarios anteriores
-  console.log('🗑️ Limpiando usuarios anteriores con patrón @seed.com...');
+  // Limpiar usuarios anteriores (opcional)
+  console.log('🗑️ Limpiando usuarios anteriores...');
   try {
     const result = await userRepository.delete({
       email: process.env.DB_SEED_EMAIL_PATTERN || 'seedtest.com',
@@ -42,94 +42,65 @@ async function seed() {
   }
 
   const users = [
-    // NUTRICIONISTAS
     {
-      email: 'nutricionista1@seed.com',
-      password: 'Password123!',
-      firstName: 'Carlos',
-      lastName: 'Ruiz García',
+      email: 'nutricionista1@seedtest.com',
+      password: 'Password123',
+      fullName: 'Carlos Ruiz',
       role: Role.NUTRICIONISTA,
     },
     {
-      email: 'nutricionista2@seed.com',
-      password: 'Password123!',
-      firstName: 'Ana',
-      lastName: 'Martínez López',
+      email: 'nutricionista2@seedtest.com',
+      password: 'Password123',
+      fullName: 'Ana García',
       role: Role.NUTRICIONISTA,
     },
-    // LABORATORIOS
     {
-      email: 'laboratorio1@seed.com',
-      password: 'Password123!',
-      firstName: 'Dr. Pedro',
-      lastName: 'Pérez Sánchez',
+      email: 'laboratorio1@seedtest.com',
+      password: 'Password123',
+      fullName: 'Dr. Pérez López',
       role: Role.LABORATORIO,
     },
     {
-      email: 'laboratorio2@seed.com',
-      password: 'Password123!',
-      firstName: 'Dra. María',
-      lastName: 'González Rodríguez',
+      email: 'laboratorio2@seedtest.com',
+      password: 'Password123',
+      fullName: 'Dra. Martínez González',
       role: Role.LABORATORIO,
     },
   ];
 
   console.log('👤 Creando usuarios ficticios...\n');
 
-  const createdUsers: { email: string; password: string; role: string }[] = [];
-
   for (const userData of users) {
-    try {
-      const hashedPassword = await bcrypt.hash(userData.password, 10);
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
 
-      const user = userRepository.create({
-        email: userData.email,
-        password: hashedPassword,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        role: userData.role,
-        emailVerified: true, // ✅ Ya verificados para poder hacer login
-        isActive: true,
-      });
+    const user = userRepository.create({
+      email: userData.email,
+      password: hashedPassword,
+      fullName: userData.fullName,
+      role: userData.role,
+      emailVerified: true, // ✅ Ya verificados para poder hacer login
+      isActive: true,
+    });
 
-      await userRepository.save(user);
-      createdUsers.push({
-        email: userData.email,
-        password: userData.password,
-        role: userData.role.toUpperCase(),
-      });
+    await userRepository.save(user);
 
-      console.log(`✅ ${userData.role.toUpperCase()}: ${userData.email}`);
-      console.log(`   Contraseña: ${userData.password}`);
-      console.log(`   Nombre: ${userData.firstName} ${userData.lastName}\n`);
-    } catch (error) {
-      console.error(`❌ Error creando usuario ${userData.email}:`, error);
-    }
+    console.log(`✅ ${userData.role.toUpperCase()}: ${userData.email}`);
+    console.log(`   Contraseña: ${userData.password}`);
+    console.log(`   Nombre: ${userData.fullName}\n`);
   }
 
-  console.log('═══════════════════════════════════════════════════════════');
+  console.log('═══════════════════════════════════════════');
   console.log('✨ SEED COMPLETADO\n');
-  console.log('📝 Credenciales para testing:\n');
-
-  console.log('🥗 NUTRICIONISTAS:');
-  createdUsers
-    .filter((u) => u.role === 'NUTRICIONISTA')
-    .forEach((u) => {
-      console.log(`  Email: ${u.email}`);
-      console.log(`  Password: ${u.password}`);
-      console.log(`  Role: nutricionista\n`);
-    });
-
-  console.log('🧪 LABORATORIOS:');
-  createdUsers
-    .filter((u) => u.role === 'LABORATORIO')
-    .forEach((u) => {
-      console.log(`  Email: ${u.email}`);
-      console.log(`  Password: ${u.password}`);
-      console.log(`  Role: laboratorio\n`);
-    });
-
-  console.log('═══════════════════════════════════════════════════════════\n');
+  console.log('📝 Para testear, usa estos logins:\n');
+  console.log('NUTRICIONISTA:');
+  console.log('  Email: nutricionista1@seedtest.com');
+  console.log('  Password: Password123');
+  console.log('  Role: nutricionista\n');
+  console.log('LABORATORIO:');
+  console.log('  Email: laboratorio1@seedtest.com');
+  console.log('  Password: Password123');
+  console.log('  Role: laboratorio\n');
+  console.log('═══════════════════════════════════════════\n');
 
   await dataSource.destroy();
 }

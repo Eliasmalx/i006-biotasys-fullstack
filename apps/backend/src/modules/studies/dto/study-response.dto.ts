@@ -12,11 +12,8 @@ export class StudyUserSummaryDto {
   @ApiProperty({ example: 'nutri@biotasys.com' })
   email!: string;
 
-  @ApiProperty({ example: 'Elena' })
-  firstName!: string;
-
-  @ApiProperty({ example: 'Mendoza' })
-  lastName!: string;
+  @ApiProperty({ example: 'Elena Mendoza' })
+  fullName!: string;
 
   @ApiPropertyOptional({
     enum: Role,
@@ -34,6 +31,9 @@ export class StudyResponseDto {
 
   @ApiProperty({ example: 'BIO-AR-00001' })
   studyCode!: string;
+
+  @ApiProperty({ example: 'd2d3fd1e-6f91-4b2e-b902-8d6578d6a3f1', required: false })
+  organizationId?: string | null;
 
   @ApiProperty({ example: 'PCT-AR-56321' })
   patientCode!: string;

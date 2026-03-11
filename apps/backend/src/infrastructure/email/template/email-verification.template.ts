@@ -13,7 +13,12 @@ interface EmailVerificationData {
 export function generateEmailVerificationTemplate(
   data: EmailVerificationData,
 ): string {
-  const { userEmail, firstName, verificationLink, expiryMinutes } = data;
+  const {
+    userEmail,
+    firstName: fullName,
+    verificationLink,
+    expiryMinutes,
+  } = data;
 
   return `
     <!DOCTYPE html>
@@ -41,10 +46,16 @@ export function generateEmailVerificationTemplate(
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         .header {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #A1B2FF;
           color: white;
           padding: 30px 20px;
           text-align: center;
+          border-radius: 8px 8px 0 0;
+        }
+        .header img {
+          max-width: 150px;
+          height: auto;
+          margin-bottom: 15px;
         }
         .header h1 {
           font-size: 28px;
@@ -59,7 +70,7 @@ export function generateEmailVerificationTemplate(
           margin-bottom: 20px;
         }
         .greeting strong {
-          color: #667eea;
+          color: #A1B2FF;
         }
         .message {
           font-size: 14px;
@@ -69,7 +80,7 @@ export function generateEmailVerificationTemplate(
         }
         .verification-box {
           background-color: #f9f9f9;
-          border: 2px solid #667eea;
+          border: 2px solid #A1B2FF;
           border-radius: 8px;
           padding: 30px;
           margin-bottom: 25px;
@@ -77,7 +88,7 @@ export function generateEmailVerificationTemplate(
         }
         .cta-button {
           display: inline-block;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #A1B2FF;
           color: white !important;
           padding: 14px 40px;
           text-decoration: none;
@@ -120,7 +131,7 @@ export function generateEmailVerificationTemplate(
           margin-top: 10px;
         }
         .footer-links a {
-          color: #667eea;
+          color: #A1B2FF;
           text-decoration: none;
           margin: 0 10px;
         }
@@ -137,6 +148,7 @@ export function generateEmailVerificationTemplate(
       <div class="container">
         <!-- Header -->
         <div class="header">
+          <img src="https://i.wpfc.ml/8n/gml890.png" alt="Biotasys Logo" />
           <h1>¡Bienvenido a Biotasys!</h1>
           <p>Verifica tu dirección de correo electrónico para continuar</p>
         </div>
@@ -144,7 +156,7 @@ export function generateEmailVerificationTemplate(
         <!-- Content -->
         <div class="content">
           <div class="greeting">
-            ¡Hola <strong>${firstName}</strong>!
+            ¡Hola <strong>${fullName}</strong>!
           </div>
 
           <div class="message">

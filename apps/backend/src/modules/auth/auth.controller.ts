@@ -6,28 +6,16 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-} from '@nestjs/swagger';
-import type { Request } from 'express';
-import { Role } from '../../common/enums/role.enum';
-import { JwtAuthGuard } from '../../common/guards/jwt-guards';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { SwitchRoleDto } from './dto/switch-role.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { LoginResponseDto } from './dto/login-response.dto';
 
-type AuthenticatedRequest = Request & {
-  user: {
-    userId: string;
-    role: Role;
-    email?: string;
-  };
-};
-
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -129,5 +117,53 @@ export class AuthController {
       request.user.userId,
       switchRoleDto.role,
     );
+  }
+
+  @Post('forgot-password')
+  @ApiOperation({
+    summary: 'Solicitar reseteo de contraseña',
+    description:
+      'Genera un token de reseteo y envía email con link para restaurar contraseña',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Email de reseteo enviado (si el usuario existe)',
+    schema: {
+      example: {
+        message:
+          'Si el email existe en nuestro sistema, recibirás un enlace para restaurar tu contraseña',
+      },
+    },
+  })
+  async forgotPassword(
+    @Body() forgotPasswordDto: ForgotPasswordDto,
+  ): Promise<{ message: string }> {
+    return this.authService.forgotPassword(forgotPasswordDto);
+  }
+
+  @Post('reset-password')
+  @ApiOperation({
+    summary: 'Resetear contraseña',
+    description:
+      'Valida el token de reseteo y actualiza la contraseña del usuario',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Contraseña reseteada exitosamente',
+    schema: {
+      example: {
+        message:
+          'Tu contraseña ha sido reseteada correctamente. Por favor, inicia sesión',
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Token inválido, expirado o ya utilizado',
+  })
+  async resetPassword(
+    @Body() resetPasswordDto: ResetPasswordDto,
+  ): Promise<{ message: string }> {
+    return this.authService.resetPassword(resetPasswordDto);
   }
 }
