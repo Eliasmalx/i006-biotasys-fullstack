@@ -48,14 +48,50 @@ export class UsersController {
 
   @Post()
   @ApiOperation({
-    summary: 'Crear usuario',
-    description: 'Registra un nuevo usuario y envía email de verificación',
+    summary: 'Registrar nuevo usuario',
+    description: 'Crea un nuevo usuario en el sistema y envía email de verificación. El usuario debe verificar su email antes de poder loguearse.',
   })
-  @ApiBody({ type: CreateUserDto })
+  @ApiBody({
+    type: CreateUserDto,
+    examples: {
+      nutricionista: {
+        value: {
+          fullName: 'Juan Pérez García',
+          email: 'juan@example.com',
+          password: 'SecurePass123!',
+          laboratory: 'Laboratorio Central',
+        },
+      },
+      sinLaboratorio: {
+        value: {
+          fullName: 'María López',
+          email: 'maria@example.com',
+          password: 'SecurePass123!',
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: 201,
-    description: 'Usuario creado exitosamente',
+    description: 'Usuario creado exitosamente. Email de verificación enviado.',
     type: UserResponseDto,
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Email ya registrado en el sistema',
+    schema: {
+      example: {
+        message: 'Error: Email already exists',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Datos inválidos (contraseña muy corta, nombre vacío, etc)',
+  })
+  @ApiResponse({
+    status: 422,
+    description: 'Validación fallida en los datos de entrada',
   })
   create(@Body() createUserDto: CreateUserDto): Promise<UserResponseDto> {
     return this.usersService.create(createUserDto);
@@ -64,17 +100,48 @@ export class UsersController {
   @Post('verify-email')
   @ApiOperation({
     summary: 'Verificar email',
-    description: 'Verifica el email del usuario usando un token',
+    description: 'Valida el token de verificación enviado al email del usuario mediante query parameter. El token expira en 24 horas. Ejemplo de URL: /users/verify-email?token=4B9780AD71184449F17D65541ADD2CF8541CCD7BE686DF4B75BCDE68E3C2AB92',
   })
   @ApiQuery({
     name: 'token',
     required: true,
-    description: 'Token de verificación de email',
+    description: 'Token de verificación recibido en el email del usuario (64 caracteres hexadecimales)',
+    type: String,
+    example: '4B9780AD71184449F17D65541ADD2CF8541CCD7BE686DF4B75BCDE68E3C2AB92',
   })
   @ApiResponse({
     status: 200,
-    description: 'Email verificado exitosamente',
+    description: 'Email verificado exitosamente. Usuario ya puede hacer login.',
     type: UserResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Token inválido, expirado o ya utilizado',
+    schema: {
+      examples: {
+        tokenInvalido: {
+          summary: 'Token inválido',
+          value: { message: 'Token de verificación inválido' },
+        },
+        tokenExpirado: {
+          summary: 'Token expirado',
+          value: { message: 'El enlace de verificación ha expirado' },
+        },
+        yaVerificado: {
+          summary: 'Email ya verificado',
+          value: { message: 'El email ya fue verificado' },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 422,
+    description: 'Token requerido en query parameter',
+    schema: {
+      example: {
+        message: 'Token es requerido',
+      },
+    },
   })
   verifyEmail(@Query('token') token?: string): Promise<UserResponseDto> {
     if (!token) {
