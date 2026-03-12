@@ -62,14 +62,6 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   lastLoginAt?: Date;
 
-  @ApiProperty({
-    example: 'Laboratorio Central',
-    required: false,
-    description: 'Nombre del laboratorio (opcional)',
-  })
-  @Column({ type: 'varchar', nullable: true })
-  laboratory?: string;
-
   @ApiProperty()
   @CreateDateColumn()
   createdAt!: Date;

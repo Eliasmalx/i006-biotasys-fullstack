@@ -1,12 +1,25 @@
-import { Controller, Post, Body, HttpStatus } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Post, Body, HttpStatus, UseGuards, Req } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { LoginResponseDto } from './dto/login-response.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-guards';
+import { Role } from '../../common/enums/role.enum';
+
+type AuthenticatedRequest = Request & {
+  user: {
+    userId: string;
+    email: string;
+  };
+};
+
+interface SwitchRoleDto {
+  role: Role;
+}
 
 @ApiTags('Auth')
 @Controller('auth')

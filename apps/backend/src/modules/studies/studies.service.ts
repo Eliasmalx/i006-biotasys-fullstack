@@ -170,9 +170,9 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     const qb = this.studyRepository
       .createQueryBuilder('study')
       .leftJoinAndSelect('study.nutritionist', 'nutritionist')
-      .leftJoinAndSelect('study.laboratory', 'laboratory')
-      .where('study.laboratoryId = :laboratoryId', {
-        laboratoryId: currentUser.userId,
+      .leftJoinAndSelect('study.assignee', 'assignee')
+      .where('study.assigneeUserId = :assigneeUserId', {
+        assigneeUserId: currentUser.userId,
       });
 
     this.applyCommonFilters(qb, query);
@@ -198,8 +198,8 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       });
     } else if (currentUser.role === Role.LABORATORIO) {
       study = await this.studyRepository.findOne({
-        where: { id: studyId, laboratoryId: currentUser.userId },
-        relations: ['nutritionist', 'laboratory'],
+        where: { id: studyId, assigneeUserId: currentUser.userId },
+        relations: ['nutritionist', 'assignee'],
       });
     } else {
       throw new ForbiddenException('Rol no autorizado para consultar estudios');
@@ -981,7 +981,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     const study = await this.studyRepository.findOne({
       where: {
         id: studyId,
-        laboratoryId: currentUser.userId,
+        assigneeUserId: currentUser.userId,
       },
       relations: ['nutritionist', 'assignee'],
     });
