@@ -60,7 +60,7 @@ export const AppRoutes: React.FC = () => {
       {/* Otras rutas */}
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/invitations/accept/:token" element={<AcceptInvitationPage />} />
-      <Route path="/passwoedRecovery" element={<PasswordRecovery />} />
+      <Route path="/passwordRecovery" element={<PasswordRecovery />} />
       <Route path="/passwoedReset" element={<PasswordReset />} />
       <Route path="/dashboardLaboratory" element={<DashboardNutritionist/>} />
       
