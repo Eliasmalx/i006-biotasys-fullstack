@@ -41,6 +41,7 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly REFRESH_TOKEN_EXPIRY_DAYS = 7;
   private readonly PASSWORD_RESET_TOKEN_EXPIRY_MINUTES = 15;
+  private readonly SWITCHABLE_ROLES = [Role.NUTRICIONISTA, Role.LABORATORIO];
 
   constructor(
     private readonly jwtService: JwtService,
@@ -104,7 +105,17 @@ export class AuthService {
       `Usuario ${user.email} inició sesión con rol ${role} exitosamente`,
     );
 
-    return this.buildLoginResponse(user, role, accessToken, refreshToken.token);
+    return {
+      accessToken,
+      refreshToken: refreshToken.token,
+      expiresIn: config.jwtExpiresIn,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role,
+      },
+    };
   }
 
   /**
@@ -152,9 +163,7 @@ export class AuthService {
       `Usuario ${user.email} cambio sesion a rol ${targetRole} exitosamente`,
     );
 
-    return this.buildLoginResponse(
-      user,
-      targetRole,
+    return {
       accessToken,
       refreshToken: refreshToken.token,
       expiresIn: config.jwtExpiresIn,
@@ -162,8 +171,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
-        role,
-        organizationId: user.organizationId,
+        role: targetRole,
       },
     };
   }
@@ -365,7 +373,7 @@ export class AuthService {
       await this.passwordResetTokenRepository.save(tokenEntity);
 
       // Construir link de reseteo (el frontend debe capturarlo)
-      const resetLink = `${config.appUrl}/reset-password?token=${resetToken}`;
+      const resetLink = config.appUrl + '/reset-password?token=' + resetToken;
 
       // Enviar email
       await this.emailService.sendPasswordResetEmail(

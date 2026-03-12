@@ -91,12 +91,14 @@ export class UsersService {
       );
 
       // Retornar DTO sin exponer la contraseña
-      const responseDto = this.mapUserToResponseDto(savedUser);
-      if (config.nodeEnv === 'development') {
-        responseDto.verificationToken = verificationToken.token;
-        responseDto.verificationLink = verificationLink;
-      }
-      return responseDto;
+      const response = {
+        ...this.mapUserToResponseDto(savedUser),
+        ...(config.nodeEnv === 'development' && {
+          verificationToken: verificationToken.token,
+          verificationLink,
+        }),
+      };
+      return response;
     } catch (error) {
       if (error instanceof ConflictException) {
         throw error;
@@ -145,8 +147,7 @@ export class UsersService {
         new Brackets((subQb) => {
           subQb
             .where('user.laboratory ILIKE :term', { term })
-            .orWhere('user.firstName ILIKE :term', { term })
-            .orWhere('user.lastName ILIKE :term', { term })
+            .orWhere('user.fullName ILIKE :term', { term })
             .orWhere('user.email ILIKE :term', { term });
         }),
       );
@@ -167,15 +168,14 @@ export class UsersService {
     }
 
     qb.orderBy('user.laboratory', 'ASC')
-      .addOrderBy('user.firstName', 'ASC')
-      .addOrderBy('user.lastName', 'ASC');
+      .addOrderBy('user.fullName', 'ASC');
 
     const users = await qb.getMany();
 
     return users.map((user) => ({
       userId: user.id,
       laboratory: user.laboratory!.trim(),
-      fullName: `${user.firstName} ${user.lastName}`.trim(),
+      fullName: user.fullName.trim(),
       email: user.email,
     }));
   }

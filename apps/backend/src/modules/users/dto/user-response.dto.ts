@@ -52,13 +52,6 @@ export class UserResponseDto {
   lastLoginAt?: Date;
 
   @ApiProperty({
-    example: 'Laboratorio Central',
-    required: false,
-    description: 'Nombre del laboratorio',
-  })
-  laboratory?: string;
-
-  @ApiProperty({
     example: '2026-03-03T10:30:00Z',
     description: 'Fecha de creacion',
   })
