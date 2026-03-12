@@ -1,5 +1,5 @@
 import { Controller, Post, Body, HttpStatus, UseGuards, Req } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { LoginResponseDto } from './dto/login-response.dto';
@@ -29,20 +29,46 @@ export class AuthController {
   @Post('login')
   @ApiOperation({
     summary: 'Login de usuario',
-    description: 'Valida credenciales y retorna JWT + Refresh token',
+    description: 'Autentica un usuario con email, contraseña y rol. Retorna JWT access token y refresh token para mantener la sesión.',
+  })
+  @ApiBody({
+    type: LoginDto,
+    examples: {
+      ejemplo1: {
+        value: {
+          email: 'juan@example.com',
+          password: 'SecurePass123!',
+          role: 'nutricionista',
+        },
+      },
+    },
   })
   @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Login exitoso',
+    status: 200,
+    description: 'Login exitoso. Retorna tokens de autenticación y datos del usuario.',
     type: LoginResponseDto,
   })
   @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Credenciales invalidas o usuario inactivo',
+    status: 401,
+    description: 'Email o contraseña incorrectos, o usuario inactivo',
+    schema: {
+      example: {
+        message: 'Email o contraseña incorrectos',
+      },
+    },
   })
   @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Email no verificado',
+    status: 400,
+    description: 'Email no verificado o datos de entrada inválidos',
+    schema: {
+      example: {
+        message: 'Tu email aún no ha sido verificado',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 422,
+    description: 'Datos de validación inválidos',
   })
   async login(@Body() loginDto: LoginDto): Promise<LoginResponseDto> {
     return this.authService.login(loginDto);
@@ -51,25 +77,45 @@ export class AuthController {
   @Post('refresh')
   @ApiOperation({
     summary: 'Refrescar access token',
-    description: 'Usa refresh token para obtener un nuevo access token',
+    description: 'Obtiene un nuevo access token usando un refresh token válido. El refresh token tiene duración de 7 días.',
+  })
+  @ApiBody({
+    type: RefreshTokenDto,
+    examples: {
+      ejemplo1: {
+        value: {
+          refreshToken: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6...',
+        },
+      },
+    },
   })
   @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Token refrescado exitosamente',
+    status: 200,
+    description: 'Access token refrescado exitosamente',
     schema: {
       example: {
-        accessToken: 'eyJhbGciOiJIUzI1NiIs...',
+        accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         expiresIn: 1800,
       },
     },
   })
   @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Refresh token invalido o expirado',
+    status: 401,
+    description: 'Refresh token inválido, expirado o usuario inactivo',
+    schema: {
+      example: {
+        message: 'Refresh token expirado',
+      },
+    },
   })
   @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Refresh token revocado',
+    status: 400,
+    description: 'Refresh token revocado (usuario hizo logout)',
+    schema: {
+      example: {
+        message: 'Refresh token ha sido revocado. Por favor, vuelve a loguear',
+      },
+    },
   })
   async refresh(
     @Body() refreshTokenDto: RefreshTokenDto,
@@ -79,12 +125,27 @@ export class AuthController {
 
   @Post('logout')
   @ApiOperation({
-    summary: 'Logout (revoca refresh token)',
-    description: 'Invalida el refresh token para cerrar sesion',
+    summary: 'Cerrar sesión (logout)',
+    description: 'Revoca el refresh token para terminar la sesión de forma segura',
+  })
+  @ApiBody({
+    type: RefreshTokenDto,
+    examples: {
+      ejemplo1: {
+        value: {
+          refreshToken: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6...',
+        },
+      },
+    },
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Logout exitoso',
+    description: 'Sesión cerrada exitosamente',
+    schema: {
+      example: {
+        message: 'Sesion cerrada exitosamente',
+      },
+    },
   })
   async logout(
     @Body() refreshTokenDto: RefreshTokenDto,
@@ -97,23 +158,43 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Cambiar rol de sesion',
+    summary: 'Cambiar rol de sesión',
     description:
-      'Emite nuevos tokens para cambiar entre nutricionista y laboratorio sin enviar credenciales de nuevo',
+      'Cambia el rol de la sesión actual entre nutricionista y laboratorio. Emite nuevos tokens sin requerir credenciales. Útil para usuarios que tienen múltiples roles.',
+  })
+  @ApiBody({
+    type: 'object',
+    required: true,
+    schema: {
+      type: 'object',
+      properties: {
+        role: {
+          type: 'string',
+          enum: ['nutricionista', 'laboratorio'],
+          example: 'laboratorio',
+          description: 'Nuevo rol a usar en la sesión',
+        },
+      },
+    },
   })
   @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: 'Rol de sesion actualizado exitosamente',
+    status: 201,
+    description: 'Rol de sesión actualizado. Se retornan nuevos tokens.',
     type: LoginResponseDto,
   })
   @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
+    status: 400,
     description:
-      'Rol invalido o usuario con email no verificado para operar en la plataforma',
+      'Rol inválido (no está en lista permitida) o usuario con email no verificado',
+    schema: {
+      example: {
+        message: 'Solo se permite cambiar entre nutricionista y laboratorio',
+      },
+    },
   })
   @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Token invalido o usuario inactivo/no encontrado',
+    status: 401,
+    description: 'Token JWT inválido, expirado o usuario inactivo',
   })
   async switchRole(
     @Body() switchRoleDto: SwitchRoleDto,
@@ -129,17 +210,31 @@ export class AuthController {
   @ApiOperation({
     summary: 'Solicitar reseteo de contraseña',
     description:
-      'Genera un token de reseteo y envía email con link para restaurar contraseña',
+      'Envía un email con un link de reseteo de contraseña al usuario. Por seguridad, no indica si la cuenta existe o no. El token expira en 15 minutos.',
+  })
+  @ApiBody({
+    type: ForgotPasswordDto,
+    examples: {
+      ejemplo1: {
+        value: {
+          email: 'juan@example.com',
+        },
+      },
+    },
   })
   @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Email de reseteo enviado (si el usuario existe)',
+    status: 200,
+    description: 'Solicitud procesada (retorna el mismo mensaje si el usuario existe o no)',
     schema: {
       example: {
         message:
           'Si el email existe en nuestro sistema, recibirás un enlace para restaurar tu contraseña',
       },
     },
+  })
+  @ApiResponse({
+    status: 422,
+    description: 'Email inválido o mal formateado',
   })
   async forgotPassword(
     @Body() forgotPasswordDto: ForgotPasswordDto,
@@ -149,13 +244,24 @@ export class AuthController {
 
   @Post('reset-password')
   @ApiOperation({
-    summary: 'Resetear contraseña',
+    summary: 'Resetear contraseña con token',
     description:
-      'Valida el token de reseteo y actualiza la contraseña del usuario',
+      'Valida el token de reseteo y actualiza la contraseña del usuario. El token expira en 15 minutos.',
+  })
+  @ApiBody({
+    type: ResetPasswordDto,
+    examples: {
+      ejemplo1: {
+        value: {
+          token: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6...',
+          newPassword: 'NewSecurePass123!',
+        },
+      },
+    },
   })
   @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Contraseña reseteada exitosamente',
+    status: 200,
+    description: 'Contraseña reseteada exitosamente. Inicia sesión con la nueva contraseña.',
     schema: {
       example: {
         message:
@@ -164,8 +270,25 @@ export class AuthController {
     },
   })
   @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
+    status: 400,
     description: 'Token inválido, expirado o ya utilizado',
+    schema: {
+      examples: {
+        tokenInvalido: {
+          value: { message: 'Token de reseteo inválido' },
+        },
+        tokenExpirado: {
+          value: { message: 'El enlace de reseteo ha expirado. Solicita uno nuevo' },
+        },
+        yaUtilizado: {
+          value: { message: 'Este token ya ha sido utilizado' },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 422,
+    description: 'Datos de entrada inválidos (contraseña debe tener mín. 8 caracteres)',
   })
   async resetPassword(
     @Body() resetPasswordDto: ResetPasswordDto,
