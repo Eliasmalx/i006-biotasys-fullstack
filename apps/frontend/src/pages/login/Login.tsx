@@ -75,7 +75,7 @@ const Login: React.FC = () => {
               <div
                 onClick={() => setSelectedRole("nutricionista")}
                 className={`cursor-pointer border rounded-xl p-4 text-center transition flex flex-col items-center
-                  ${selectedRole === "NUTRICIONISTA" ? "border-indigo-500 bg-indigo-50" : "border-gray-300"}`}
+                  ${selectedRole === "nutricionista" ? "border-indigo-500 bg-indigo-50" : "border-gray-300"}`}
               >
                 <FaUserMd className="text-3xl text-indigo-600 mb-2" />
                 <h3 className="font-semibold text-black">Nutricionista</h3>
