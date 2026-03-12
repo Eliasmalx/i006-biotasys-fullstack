@@ -1,33 +1,40 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Role } from '../../../common/enums/role.enum';
 
 /**
  * DTO para respuestas de usuario
- * No incluye contraseña por seguridad
+ * No incluye contrasena por seguridad
  */
 export class UserResponseDto {
   @ApiProperty({
     example: '550e8400-e29b-41d4-a716-446655440000',
-    description: 'ID único del usuario',
+    description: 'ID unico del usuario',
   })
   id!: string;
 
   @ApiProperty({
     example: 'juan@example.com',
-    description: 'Correo electrónico',
+    description: 'Correo electronico',
   })
   email!: string;
 
   @ApiProperty({ example: 'Juan Pérez García', description: 'Nombre completo del usuario' })
   fullName!: string;
 
-  @ApiProperty({
-    enum: Role,
-    example: Role.NUTRICIONISTA,
-    description: 'Rol del usuario (seleccionado en login)',
+  @ApiPropertyOptional({
+    example: 'BiomeSense',
+    description: 'Nombre del laboratorio/centro (opcional)',
   })
-  role!: Role;
+  laboratory?: string | null;
+
+  @ApiPropertyOptional({
+    enum: Role,
+    nullable: true,
+    example: null,
+    description: 'Rol seleccionado en login (puede ser null al registrarse)',
+  })
+  role!: Role | null;
 
   @ApiProperty({ example: true, description: 'Estado activo del usuario' })
   isActive!: boolean;
@@ -38,17 +45,9 @@ export class UserResponseDto {
   })
   emailVerified!: boolean;
 
-  @ApiProperty({
-    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-    required: false,
-    description: 'ID de la organización',
-  })
-  organizationId?: string;
-
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: '2026-03-03T10:30:00Z',
-    required: false,
-    description: 'Último login',
+    description: 'Ultimo login',
   })
   lastLoginAt?: Date;
 
@@ -61,13 +60,13 @@ export class UserResponseDto {
 
   @ApiProperty({
     example: '2026-03-03T10:30:00Z',
-    description: 'Fecha de creación',
+    description: 'Fecha de creacion',
   })
   createdAt!: Date;
 
   @ApiProperty({
     example: '2026-03-03T10:30:00Z',
-    description: 'Fecha de actualización',
+    description: 'Fecha de actualizacion',
   })
   updatedAt!: Date;
 

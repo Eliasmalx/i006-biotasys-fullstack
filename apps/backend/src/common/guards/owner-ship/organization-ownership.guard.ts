@@ -1,90 +1,45 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   CanActivate,
   ExecutionContext,
   Injectable,
   ForbiddenException,
-  NotFoundException,
   Logger,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from '../../../modules/users/entities/user.entity';
 
 /**
  * OrganizationOwnershipGuard
- * Valida ownership multinivel según el rol del usuario:
- * - ADMIN: Can access resources pertenecientes a su organización
- * - PROFESSIONAL/LAB_OPERATOR: Can only access recursos que crearon (createdBy)
- *
- * Uso:
- * @Get(':id')
- * @UseGuards(JwtAuthGuard, RolesGuard, OrganizationOwnershipGuard)
- * async findOne(@Param('id') id: string) { ... }
+ * Version sin organizacion: valida ownership por usuario autenticado.
  */
 @Injectable()
 export class OrganizationOwnershipGuard implements CanActivate {
   private readonly logger = new Logger(OrganizationOwnershipGuard.name);
   private readonly userPattern = /\/users\/[\w-]+/;
-  private readonly patientPattern = /\/patients\/[\w-]+/;
 
-  constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-  ) {}
-
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
-    const resourceId = request.params.id;
-    const user = request.user;
+    const resourceId = request.params.id as string | undefined;
+    const user = request.user as { userId?: string } | undefined;
 
-    if (!user || !user.organizationId) {
+    if (!user?.userId) {
       throw new ForbiddenException('No autorizado');
     }
 
-    // Detectar el tipo de recurso por la ruta
-    const routePath = request.path;
+    const routePath = request.path as string;
 
     if (this.userPattern.test(routePath)) {
-      // Validar ownership de User (siempre por organización)
-      return this.validateUserOwnership(resourceId, user.organizationId);
+      if (resourceId !== user.userId) {
+        this.logger.warn(
+          `Acceso no autorizado: user ${user.userId} intento acceder a user ${resourceId}`,
+        );
+        throw new ForbiddenException('No puedes acceder a este recurso');
+      }
+      return true;
     }
 
-    if (this.patientPattern.test(routePath)) {
-      return this.validateUserOwnership(resourceId, user);
-    }
-
-    // Rechazar recursos no reconocidos (mayor seguridad)
     this.logger.warn(
       `Intento de acceso a ruta no permitida: ${routePath} por usuario ${user.userId}`,
     );
     throw new ForbiddenException('Recurso no disponible');
-  }
-
-  private async validateUserOwnership(
-    userId: string,
-    organizationId: string,
-  ): Promise<boolean> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
-
-    if (user.organizationId !== organizationId) {
-      this.logger.warn(
-        `Intento de acceso no autorizado: usuario ${userId} no pertenece a org ${organizationId}`,
-      );
-      // eslint-disable-next-line prettier/prettier
-      throw new ForbiddenException(
-        'El usuario no pertenece a tu organización',
-      );
-    }
-
-    return true;
   }
 }

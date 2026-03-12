@@ -8,7 +8,6 @@ type JwtUser = {
   userId: string;
   email: string;
   role: string;
-  organizationId?: string | null;
 };
 
 type PassportInfo = { message?: string };

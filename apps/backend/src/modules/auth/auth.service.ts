@@ -26,7 +26,6 @@ interface JwtPayload {
   sub: string;
   email: string;
   role: Role;
-  organizationId?: string;
 }
 
 /**
@@ -105,7 +104,57 @@ export class AuthService {
       `Usuario ${user.email} inició sesión con rol ${role} exitosamente`,
     );
 
-    return {
+    return this.buildLoginResponse(user, role, accessToken, refreshToken.token);
+  }
+
+  /**
+   * Cambia el rol de la sesion activa sin modificar el rol persistido en BD
+   * @param userId ID del usuario autenticado
+   * @param targetRole Rol objetivo para emitir nuevos tokens
+   * @returns Nuevos tokens y datos de usuario con el rol de sesion solicitado
+   */
+  async switchSessionRole(
+    userId: string,
+    targetRole: Role,
+  ): Promise<LoginResponseDto> {
+    if (!this.SWITCHABLE_ROLES.includes(targetRole)) {
+      throw new BadRequestException(
+        'Solo se permite cambiar entre nutricionista y laboratorio',
+      );
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuario no encontrado');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException(
+        'El usuario no esta activo. Contacta con el administrador',
+      );
+    }
+
+    if (!user.emailVerified) {
+      throw new BadRequestException(
+        'Tu email aun no ha sido verificado. Revisa tu bandeja de entrada para el enlace de verificacion',
+      );
+    }
+
+    await this.userRepository.update(user.id, { lastLoginAt: new Date() });
+
+    const accessToken = this.generateAccessToken(user, targetRole);
+    const refreshToken = await this.generateRefreshToken(user.id, targetRole);
+
+    this.logger.log(
+      `Usuario ${user.email} cambio sesion a rol ${targetRole} exitosamente`,
+    );
+
+    return this.buildLoginResponse(
+      user,
+      targetRole,
       accessToken,
       refreshToken: refreshToken.token,
       expiresIn: config.jwtExpiresIn,
@@ -130,7 +179,6 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role,
-      organizationId: user.organizationId,
     };
 
     return this.jwtService.sign(payload);

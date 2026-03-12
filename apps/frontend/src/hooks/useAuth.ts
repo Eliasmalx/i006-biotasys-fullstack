@@ -1,11 +1,23 @@
-import { useAuth as useAuthContext } from '../context/AuthContext';
-import { User } from '../types';
+import { useAuth as useAuthContext } from "../context/AuthContext";
+import { User } from "../types";
 
 export const useAuth = () => {
-  const { authState, login, logout, setLoading, setError } = useAuthContext();
+  const {
+    authState,
+    login,
+    logout,
+    setLoading,
+    setError,
+    refreshToken,
+  } = useAuthContext();
 
-  const loginUser = (user: User) => {
-    login(user);
+  // Adaptamos login para aceptar accessToken + refreshToken
+  const loginUser = (
+    user: User,
+    accessToken: string,
+    refreshTokenValue: string
+  ) => {
+    login(user, accessToken, refreshTokenValue);
   };
 
   const logoutUser = () => {
@@ -21,10 +33,16 @@ export const useAuth = () => {
     isAuthenticated: authState.isAuthenticated,
     loading: authState.loading,
     error: authState.error,
+
     login: loginUser,
     logout: logoutUser,
+
+    refreshToken, // ahora disponible para logout en el Navbar
+
     setLoading,
     setError,
     clearError,
   };
 };
+
+

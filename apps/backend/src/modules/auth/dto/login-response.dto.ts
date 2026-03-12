@@ -31,6 +31,5 @@ export class LoginResponseDto {
     email: string;
     fullName: string;
     role: Role;
-    organizationId?: string;
   };
 }
