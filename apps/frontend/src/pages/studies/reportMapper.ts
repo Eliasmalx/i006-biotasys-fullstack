@@ -1,4 +1,4 @@
-export interface ReportStudy {
+﻿export interface ReportStudy {
   id: string;
   patientCode: string;
   studyCode: string;
@@ -16,6 +16,8 @@ export interface ReportMetricGauge {
   percent: number;
 }
 
+export type ReportHeroStatus = "balanced" | "altered" | "inconclusive" | "chronic";
+
 export interface ReportViewModel {
   header: {
     patientCode: string;
@@ -23,6 +25,7 @@ export interface ReportViewModel {
     analysisDate: string;
   };
   summary: {
+    status: ReportHeroStatus;
     title: string;
     description: string;
     tags: string[];
@@ -93,29 +96,64 @@ const percentFromLabel = (value: string) => {
   return 52;
 };
 
-const deriveHeroTitle = (globalIndicator: string, riskScore: number | null, tags: string[]) => {
-  const normalizedText = [globalIndicator, ...tags].join(" ").toLowerCase();
+const stripDiacritics = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+const deriveHeroStatus = (
+  globalIndicator: string,
+  riskScore: number | null,
+  tags: string[],
+): ReportHeroStatus => {
+  const normalizedText = stripDiacritics([globalIndicator, ...tags].join(" ").toLowerCase());
 
   if (
-    normalizedText.includes("óptimo") ||
+    normalizedText.includes("inconclus") ||
+    normalizedText.includes("insuficiente") ||
+    normalizedText.includes("no concluyente") ||
+    normalizedText.includes("analisis limitado")
+  ) {
+    return "inconclusive";
+  }
+
+  if (
+    normalizedText.includes("cronica") ||
+    normalizedText.includes("cronico") ||
+    normalizedText.includes("persistente")
+  ) {
+    return "chronic";
+  }
+
+  if (
+    normalizedText.includes("optimo") ||
     normalizedText.includes("salud") ||
     normalizedText.includes("equilibr") ||
-    normalizedText.includes("eubiosis") ||
-    (riskScore !== null && riskScore <= 33)
+    normalizedText.includes("eubiosis")
   ) {
-    return "Microbiota equilibrada";
+    return "balanced";
   }
 
   if (
     normalizedText.includes("alter") ||
     normalizedText.includes("disbios") ||
-    normalizedText.includes("medio") ||
-    (riskScore !== null && riskScore <= 66)
+    normalizedText.includes("riesgo") ||
+    normalizedText.includes("desequilibrio")
   ) {
-    return "Microbiota con alteraciones";
+    return "altered";
   }
 
-  return "Microbiota comprometida";
+  if (riskScore !== null) {
+    if (riskScore <= 33) return "balanced";
+    if (riskScore <= 66) return "altered";
+    return "chronic";
+  }
+
+  return "inconclusive";
+};
+
+const statusLabelMap: Record<ReportHeroStatus, string> = {
+  balanced: "Microbiota equilibrada",
+  altered: "Microbiota alterada",
+  inconclusive: "Microbiota inconclusa",
+  chronic: "Microbiota crónica",
 };
 
 const normalizePresence = (abundance: number) => {
@@ -151,7 +189,7 @@ export const mapStudyToReportView = (study: ReportStudy): ReportViewModel => {
   const riskScore = numberValue(finalObservations.risk_score);
   const conclusionTags = Array.isArray(finalObservations.conclusion_tags) ? finalObservations.conclusion_tags : [];
   const summaryTags = Array.isArray(generalSummary.summary_tags) ? generalSummary.summary_tags : [];
-  const heroTitle = deriveHeroTitle(finalObservations.global_indicator || "", riskScore, [...conclusionTags, ...summaryTags]);
+  const heroStatus = deriveHeroStatus(finalObservations.global_indicator || "", riskScore, [...conclusionTags, ...summaryTags]);
 
   const compositionRows = predominantGenera.length
     ? predominantGenera.map((item: any) => ({
@@ -199,7 +237,8 @@ export const mapStudyToReportView = (study: ReportStudy): ReportViewModel => {
       analysisDate: formatDate(normalized.report_date || study.completedAt || study.studyDate),
     },
     summary: {
-      title: heroTitle,
+      status: heroStatus,
+      title: statusLabelMap[heroStatus],
       description: generalSummary.summary || finalObservations.conclusions || "No disponible",
       tags: summaryTags.length ? summaryTags : conclusionTags,
     },

@@ -1,4 +1,4 @@
-.report-page {
+﻿.report-page {
   min-height: calc(100vh - 72px);
   background: #f1f5fb;
   padding: 32px 24px 40px;
@@ -120,16 +120,23 @@
   display: grid;
   grid-template-columns: 1.05fr 0.72fr 1.15fr;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .report-column {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+}
+
+.report-column > .report-card:last-child {
+  flex: 1;
 }
 
 .report-card {
+  display: flex;
+  flex-direction: column;
   border: 1px solid #d7deea;
   background: #ffffff;
   border-radius: 4px;
@@ -150,16 +157,54 @@
   color: #5a6480;
 }
 
-.report-card__header--success {
+.report-card__header--balanced,
+.report-card__header--altered,
+.report-card__header--inconclusive,
+.report-card__header--chronic {
   display: flex;
   align-items: center;
   gap: 10px;
   background: #ffffff;
 }
 
-.report-card__header--success h2 {
+.report-card__header--balanced h2 {
   color: #17803d;
   font-size: 15px;
+}
+
+.report-card__header--balanced .report-card__icon {
+  background: #17803d;
+  color: #ffffff;
+}
+
+.report-card__header--altered h2 {
+  color: #c81e1e;
+  font-size: 15px;
+}
+
+.report-card__header--altered .report-card__icon {
+  background: #c81e1e;
+  color: #ffffff;
+}
+
+.report-card__header--inconclusive h2 {
+  color: #c27a08;
+  font-size: 15px;
+}
+
+.report-card__header--inconclusive .report-card__icon {
+  background: #c27a08;
+  color: #ffffff;
+}
+
+.report-card__header--chronic h2 {
+  color: #414651;
+  font-size: 15px;
+}
+
+.report-card__header--chronic .report-card__icon {
+  background: #414651;
+  color: #ffffff;
 }
 
 .report-card__icon {
@@ -169,10 +214,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #17803d;
-  color: white;
   font-size: 14px;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
 .report-card__body {
@@ -284,6 +328,13 @@
 .report-opportunists,
 .report-functions {
   padding: 12px 16px 16px;
+}
+
+.report-column > .report-card:last-child .report-card__body,
+.report-column > .report-card:last-child .report-list,
+.report-column > .report-card:last-child .report-opportunists,
+.report-column > .report-card:last-child .report-functions {
+  flex: 1;
 }
 
 .report-list__item {

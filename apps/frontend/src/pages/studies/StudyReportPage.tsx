@@ -1,9 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import { api } from "../../services/api";
-import { mapStudyToReportView, ReportMetricGauge, ReportStudy } from "./reportMapper";
+import { mapStudyToReportView, ReportHeroStatus, ReportMetricGauge, ReportStudy } from "./reportMapper";
 import "./StudyReportPage.css";
+
+const heroStatusUi: Record<ReportHeroStatus, { icon: string; className: string }> = {
+  balanced: { icon: "✓", className: "report-card__header--balanced" },
+  altered: { icon: "△", className: "report-card__header--altered" },
+  inconclusive: { icon: "−", className: "report-card__header--inconclusive" },
+  chronic: { icon: "△", className: "report-card__header--chronic" },
+};
 
 const Gauge = ({ item }: { item: ReportMetricGauge }) => {
   const radius = 42;
@@ -106,6 +113,8 @@ export const StudyReportPage = () => {
     );
   }
 
+  const heroUi = heroStatusUi[report.summary.status];
+
   return (
     <div className="report-page">
       <div className="report-shell">
@@ -137,8 +146,8 @@ export const StudyReportPage = () => {
         <div className="report-grid">
           <div className="report-column report-column--left">
             <section className="report-card report-card--hero">
-              <div className="report-card__header report-card__header--success">
-                <span className="report-card__icon">✓</span>
+              <div className={`report-card__header ${heroUi.className}`}>
+                <span className="report-card__icon">{heroUi.icon}</span>
                 <h2>{report.summary.title}</h2>
               </div>
               <div className="report-card__body">
