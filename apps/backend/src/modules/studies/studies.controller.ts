@@ -191,7 +191,7 @@ export class StudiesController {
   @ApiOperation({
     summary: 'Cargar JSON de estudio',
     description:
-      'Guarda el JSON bruto del laboratorio, valida campos clinicos base y encola el envio al backend IA. El envio tecnico saliente se realiza en formato snake_case (study_code, nutricionist_id, patient_id, raw_json, study_date).',
+      'Guarda el JSON bruto del laboratorio y encola el envio al backend IA. Acepta rawJson o raw_json; si study_code, nutricionist_id, patient_id o study_date vienen informados, se validan contra el estudio almacenado. El envio tecnico saliente se realiza en formato snake_case (study_id, study_code, nutricionist_id, patient_id, raw_json, study_date).',
   })
   @ApiBody({ type: UploadStudyJsonDto })
   @ApiResponse({
@@ -202,7 +202,7 @@ export class StudiesController {
   @ApiResponse({
     status: 400,
     description:
-      'JSON invalido o mismatch con datos del estudio (patientCode/patientAge/patientSex/studyDate)',
+      'JSON invalido, rawJson/raw_json vacio o mismatch con datos del estudio',
   })
   @ApiResponse({ status: 409, description: 'Estado invalido para cargar JSON' })
   uploadStudyRawJson(
@@ -295,17 +295,20 @@ export class StudiesController {
             patientSummary: { code: 'PCT-AR-56321' },
             findings: [{ key: 'alpha_diversity', value: 2.31 }],
           },
-          aiResult: 'equilibrada',
         },
       },
       snakeCase: {
         summary: 'Formato snake_case',
         value: {
-          file_url: 'https://biotasys.com/v1/report_123.pdf',
+          study_id: 'f37e86f5-95d5-46db-b255-f31a2f0eb2ec',
           study_code: 'BIO-123',
+          nutricionist_id: '7ec2c8ca-c633-43ea-95dc-02af73ad2018',
+          patient_id: 'PCT-AR-56321',
+          file_url: 'https://biotasys.com/v1/report_123.pdf',
           data: { biomarkers: [] },
           interpretation: { summary: 'ok' },
-          aiResult: 'inconclusa',
+          study_date: '2026-03-06T15:30:00Z',
+          created_at: '2026-03-06T16:26:04.105367Z',
         },
       },
     },
@@ -318,7 +321,7 @@ export class StudiesController {
   @ApiResponse({
     status: 400,
     description:
-      'Payload invalido (faltan pdfUrl/file_url o normalizedJson/payload compatible)',
+      'Payload invalido (faltan pdfUrl/file_url, normalizedJson/payload compatible o los identificadores redundantes no coinciden con el estudio)',
   })
   @ApiResponse({ status: 401, description: 'API key invalida' })
   handleProcessingResult(
