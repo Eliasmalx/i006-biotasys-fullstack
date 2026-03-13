@@ -73,6 +73,24 @@ export const api = {
   return result;
 },
 
+  async verifyEmail(token: string): Promise<{ message: string }> {
+    const response = await fetch(
+      `${API_ENDPOINTS.BASE}/users/verify-email?token=${token}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || "Error al verificar el email");
+    }
+
+    return result;
+  },
+
 
   async checkHealth(): Promise<boolean> {
     try {
