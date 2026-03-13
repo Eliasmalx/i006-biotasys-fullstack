@@ -28,7 +28,6 @@ import { Study } from './entities/study.entity';
 import { StudyStatusHistory } from './entities/study-status-history.entity';
 import { StudyProcessingJob } from './entities/study-processing-job.entity';
 import { StudyCodeSequence } from './entities/study-code-sequence.entity';
-import { AiResult, ExternalAiResult } from './enums/ai-result.enum';
 import { ProcessingJobStatus } from './enums/processing-job-status.enum';
 import { PatientSex } from './enums/patient-sex.enum';
 import { ProcessingState } from './enums/processing-state.enum';
@@ -39,6 +38,23 @@ type AuthenticatedUser = {
   userId: string;
   role: Role;
   email?: string;
+};
+
+type NormalizedUploadStudyJson = {
+  rawJson: Record<string, unknown>;
+  studyCode?: string;
+  nutricionistId?: string;
+  patientId?: string;
+  studyDate?: string;
+};
+
+type NormalizedProcessingResultPayload = {
+  studyId?: string;
+  studyCode?: string;
+  nutricionistId?: string;
+  patientId?: string;
+  studyDate?: string;
+  reportDate?: string;
 };
 
 @Injectable()
@@ -115,7 +131,6 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       patientSex: dto.patientSex,
       studyDate: dto.studyDate,
       status: StudyStatus.SOLICITADO,
-      aiResult: AiResult.SIN_RESULTADO,
       processingState: ProcessingState.PENDING,
       requestedAt: now,
     });
@@ -144,7 +159,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     const qb = this.studyRepository
       .createQueryBuilder('study')
       .leftJoinAndSelect('study.nutritionist', 'nutritionist')
-      .leftJoinAndSelect('study.laboratory', 'laboratory')
+      .leftJoinAndSelect('study.assignee', 'assignee')
       .where('study.nutritionistId = :nutritionistId', {
         nutritionistId: currentUser.userId,
       });
@@ -194,7 +209,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     if (currentUser.role === Role.NUTRICIONISTA) {
       study = await this.studyRepository.findOne({
         where: { id: studyId, nutritionistId: currentUser.userId },
-        relations: ['nutritionist', 'laboratory'],
+        relations: ['nutritionist', 'assignee'],
       });
     } else if (currentUser.role === Role.LABORATORIO) {
       study = await this.studyRepository.findOne({
@@ -412,11 +427,12 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    this.validateRawJsonAgainstStudy(dto.rawJson, study);
+    const normalizedUpload = this.normalizeUploadStudyJson(dto);
+    this.validateUploadPayloadAgainstStudy(normalizedUpload, study);
 
     const fromStatus = study.status;
 
-    study.rawJson = dto.rawJson;
+    study.rawJson = normalizedUpload.rawJson;
     study.processingState = ProcessingState.PENDING;
     study.processingError = null;
     study.processingAttempts = 0;
@@ -458,7 +474,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       payload: {
         studyId: savedStudy.id,
         studyCode: savedStudy.studyCode,
-        rawJson: dto.rawJson,
+        rawJson: normalizedUpload.rawJson,
       },
       runAt: new Date(),
       status: ProcessingJobStatus.PENDING,
@@ -489,6 +505,12 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
 
     const fromStatus = study.status;
     const now = new Date();
+    const normalizedCallback =
+      this.normalizeProcessingResultPayload(dto);
+    this.validateProcessingResultPayloadAgainstStudy(
+      normalizedCallback,
+      study,
+    );
     const resolvedPdfUrl = dto.pdfUrl ?? dto.file_url;
     const resolvedNormalizedJson = this.resolveNormalizedJson(dto);
 
@@ -504,7 +526,6 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
 
     study.pdfUrl = resolvedPdfUrl;
     study.normalizedJson = resolvedNormalizedJson;
-    study.aiResult = this.mapExternalAiResult(dto.aiResult);
     study.processingState = ProcessingState.SUCCESS;
     study.processingError = null;
     study.lastProcessingAt = now;
@@ -593,24 +614,16 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      await this.sendStudyToPython(study);
-
-      await this.studyProcessingJobRepository.update(job.id, {
-        status: ProcessingJobStatus.COMPLETED,
-        lastError: null,
-      });
-
-      const now = new Date();
+      const analysisStart = new Date();
       const shouldMoveToAnalysis = study.status !== StudyStatus.EN_ANALISIS;
+
       await this.studyRepository.update(study.id, {
         status: StudyStatus.EN_ANALISIS,
         processingState: ProcessingState.PENDING,
         processingError: null,
-        processingAttempts: job.attempt + 1,
-        lastProcessingAt: now,
         rejectionReason: null,
         rejectedAt: null,
-        analysisStartedAt: study.analysisStartedAt ?? now,
+        analysisStartedAt: study.analysisStartedAt ?? analysisStart,
       });
 
       if (shouldMoveToAnalysis) {
@@ -622,6 +635,39 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
           note: 'Enviado correctamente al backend Python',
         });
       }
+
+      await this.sendStudyToPython(study);
+
+      await this.studyProcessingJobRepository.update(job.id, {
+        status: ProcessingJobStatus.COMPLETED,
+        lastError: null,
+      });
+
+      const freshStudy = await this.studyRepository.findOne({
+        where: { id: study.id },
+      });
+      if (!freshStudy) {
+        return;
+      }
+
+      if (
+        freshStudy.status === StudyStatus.INFORME_LISTO ||
+        freshStudy.processingState === ProcessingState.SUCCESS
+      ) {
+        return;
+      }
+
+      const now = new Date();
+      await this.studyRepository.update(freshStudy.id, {
+        status: StudyStatus.EN_ANALISIS,
+        processingState: ProcessingState.PENDING,
+        processingError: null,
+        processingAttempts: job.attempt + 1,
+        lastProcessingAt: now,
+        rejectionReason: null,
+        rejectedAt: null,
+        analysisStartedAt: freshStudy.analysisStartedAt ?? now,
+      });
     } catch (error: unknown) {
       const errorMessage = this.getErrorMessage(error);
       const nextAttempt = job.attempt + 1;
@@ -685,11 +731,13 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     }
 
     const timeoutMs = config.ai.requestTimeoutMs;
+    const rawJsonForAi = this.buildRawJsonForAi(study);
     const payload = {
+      study_id: study.id,
       study_code: study.studyCode,
       nutricionist_id: study.nutritionistId,
       patient_id: study.patientCode,
-      raw_json: study.rawJson,
+      raw_json: rawJsonForAi,
       study_date: this.toIsoDateTime(study.studyDate),
     };
 
@@ -722,6 +770,20 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  private buildRawJsonForAi(study: Study): Record<string, unknown> {
+    const baseRawJson = study.rawJson ? { ...study.rawJson } : {};
+    const currentMetadata = this.toPlainObject(baseRawJson.metadata);
+
+    return {
+      ...baseRawJson,
+      metadata: {
+        ...currentMetadata,
+        sex: study.patientSex,
+        age: study.patientAge,
+      },
+    };
+  }
+
   private applyCommonFilters(
     qb: ReturnType<Repository<Study>['createQueryBuilder']>,
     query: ListStudiesQueryDto,
@@ -745,10 +807,6 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
 
     if (query.status) {
       qb.andWhere('study.status = :status', { status: query.status });
-    }
-
-    if (query.aiResult) {
-      qb.andWhere('study.aiResult = :aiResult', { aiResult: query.aiResult });
     }
 
     if (query.dateFrom) {
@@ -787,7 +845,6 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       patientSex: study.patientSex,
       studyDate: study.studyDate,
       status: study.status,
-      aiResult: study.aiResult,
       processingState: study.processingState,
       processingError: study.processingError,
       pdfUrl: study.pdfUrl,
@@ -823,22 +880,6 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  private mapExternalAiResult(externalResult: ExternalAiResult): AiResult {
-    switch (externalResult) {
-      case ExternalAiResult.EQUILIBRADA:
-        return AiResult.EQUILIBRADA;
-      case ExternalAiResult.ALTERADA:
-        return AiResult.ALTERADA;
-      case ExternalAiResult.INCONCLUSA:
-        return AiResult.INCONCLUSA;
-      case ExternalAiResult.CRITICA:
-        return AiResult.CRITICA;
-      case ExternalAiResult.SIN_RESULTADO:
-      default:
-        return AiResult.SIN_RESULTADO;
-    }
-  }
-
   private resolveNormalizedJson(
     dto: ProcessingResultDto,
   ): Record<string, unknown> | null {
@@ -847,7 +888,9 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     }
 
     const externalPayload: Record<string, unknown> = {};
+    const reportDate = dto.report_date ?? dto.created_at;
 
+    if (dto.study_id) externalPayload.study_id = dto.study_id;
     if (dto.study_code) externalPayload.study_code = dto.study_code;
     if (dto.nutricionist) externalPayload.nutricionist = dto.nutricionist;
     if (dto.patient) externalPayload.patient = dto.patient;
@@ -855,7 +898,7 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     if (dto.interpretation)
       externalPayload.interpretation = dto.interpretation;
     if (dto.study_date) externalPayload.study_date = dto.study_date;
-    if (dto.report_date) externalPayload.report_date = dto.report_date;
+    if (reportDate) externalPayload.report_date = reportDate;
     if (dto.processingMeta) externalPayload.processingMeta = dto.processingMeta;
 
     if (!this.isNonEmptyObject(externalPayload)) {
@@ -869,63 +912,76 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     return Object.keys(value).length > 0;
   }
 
+  private toPlainObject(value: unknown): Record<string, unknown> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {};
+    }
+
+    return value as Record<string, unknown>;
+  }
+
   private normalizeLaboratory(value?: string | null): string | null {
     if (!value) return null;
     const normalized = value.trim().toLowerCase();
     return normalized.length > 0 ? normalized : null;
   }
 
-  private validateRawJsonAgainstStudy(
-    rawJson: Record<string, unknown>,
+  private validateUploadPayloadAgainstStudy(
+    payload: NormalizedUploadStudyJson,
     study: Study,
   ): void {
-    const rawPatientCode = this.getRawJsonString(rawJson, 'patientCode');
-    if (!rawPatientCode) {
-      throw new BadRequestException('rawJson.patientCode es requerido');
+    if (payload.studyCode && payload.studyCode !== study.studyCode) {
+      throw new BadRequestException(
+        'study_code no coincide con el estudio',
+      );
     }
-    if (rawPatientCode !== study.patientCode) {
+
+    if (
+      payload.nutricionistId &&
+      payload.nutricionistId !== study.nutritionistId
+    ) {
+      throw new BadRequestException(
+        'nutricionist_id no coincide con el estudio',
+      );
+    }
+
+    if (payload.patientId && payload.patientId !== study.patientCode) {
+      throw new BadRequestException(
+        'patient_id no coincide con el estudio',
+      );
+    }
+
+    if (payload.studyDate) {
+      const normalizedStudyDate = this.normalizeToDateOnly(payload.studyDate);
+      if (!normalizedStudyDate) {
+        throw new BadRequestException(
+          'study_date invalido. Usa formato YYYY-MM-DD o ISO 8601',
+        );
+      }
+      if (normalizedStudyDate !== study.studyDate) {
+        throw new BadRequestException(
+          'study_date no coincide con el estudio',
+        );
+      }
+    }
+
+    const rawPatientCode = this.getRawJsonString(payload.rawJson, 'patientCode');
+    if (rawPatientCode && rawPatientCode !== study.patientCode) {
       throw new BadRequestException(
         'rawJson.patientCode no coincide con el estudio',
       );
     }
 
-    const rawPatientAge = this.getRawJsonNumber(rawJson, 'patientAge');
-    if (rawPatientAge === null) {
-      throw new BadRequestException('rawJson.patientAge es requerido');
-    }
-    if (rawPatientAge !== study.patientAge) {
-      throw new BadRequestException(
-        'rawJson.patientAge no coincide con el estudio',
-      );
-    }
+    const rawStudyDate = this.getRawJsonString(payload.rawJson, 'studyDate');
+    if (!rawStudyDate) return;
 
-    const rawPatientSex = this.getRawJsonString(rawJson, 'patientSex');
-    if (!rawPatientSex) {
-      throw new BadRequestException('rawJson.patientSex es requerido');
-    }
-    const normalizedSex = rawPatientSex.trim().toUpperCase();
-    if (!Object.values(PatientSex).includes(normalizedSex as PatientSex)) {
-      throw new BadRequestException(
-        'rawJson.patientSex invalido. Valores permitidos: MASCULINO, FEMENINO',
-      );
-    }
-    if (normalizedSex !== study.patientSex) {
-      throw new BadRequestException(
-        'rawJson.patientSex no coincide con el estudio',
-      );
-    }
-
-    const rawStudyDate = this.getRawJsonString(rawJson, 'studyDate');
-    if (!rawStudyDate) {
-      throw new BadRequestException('rawJson.studyDate es requerido');
-    }
-    const normalizedStudyDate = this.normalizeToDateOnly(rawStudyDate);
-    if (!normalizedStudyDate) {
+    const normalizedRawStudyDate = this.normalizeToDateOnly(rawStudyDate);
+    if (!normalizedRawStudyDate) {
       throw new BadRequestException(
         'rawJson.studyDate invalido. Usa formato YYYY-MM-DD o ISO 8601',
       );
     }
-    if (normalizedStudyDate !== study.studyDate) {
+    if (normalizedRawStudyDate !== study.studyDate) {
       throw new BadRequestException(
         'rawJson.studyDate no coincide con el estudio',
       );
@@ -942,17 +998,91 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
     return trimmed.length > 0 ? trimmed : null;
   }
 
-  private getRawJsonNumber(
-    rawJson: Record<string, unknown>,
-    key: string,
-  ): number | null {
-    const value = rawJson[key];
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (typeof value === 'string' && value.trim().length > 0) {
-      const parsed = Number(value);
-      return Number.isFinite(parsed) ? parsed : null;
+  private normalizeUploadStudyJson(
+    dto: UploadStudyJsonDto,
+  ): NormalizedUploadStudyJson {
+    const rawJson = dto.rawJson ?? dto.raw_json;
+    if (!rawJson || !this.isNonEmptyObject(rawJson)) {
+      throw new BadRequestException(
+        'rawJson o raw_json es requerido y no puede estar vacio',
+      );
     }
-    return null;
+
+    return {
+      rawJson,
+      studyCode: this.normalizeOptionalString(dto.study_code),
+      nutricionistId: this.normalizeOptionalString(dto.nutricionist_id),
+      patientId: this.normalizeOptionalString(dto.patient_id),
+      studyDate: this.normalizeOptionalString(dto.study_date),
+    };
+  }
+
+  private normalizeProcessingResultPayload(
+    dto: ProcessingResultDto,
+  ): NormalizedProcessingResultPayload {
+    return {
+      studyId: this.normalizeOptionalString(dto.study_id),
+      studyCode: this.normalizeOptionalString(dto.study_code),
+      nutricionistId: this.normalizeOptionalString(dto.nutricionist_id),
+      patientId: this.normalizeOptionalString(dto.patient_id),
+      studyDate: this.normalizeOptionalString(dto.study_date),
+      reportDate: this.normalizeOptionalString(dto.report_date ?? dto.created_at),
+    };
+  }
+
+  private validateProcessingResultPayloadAgainstStudy(
+    payload: NormalizedProcessingResultPayload,
+    study: Study,
+  ): void {
+    if (payload.studyId && payload.studyId !== study.id) {
+      throw new BadRequestException(
+        'study_id no coincide con la URL del estudio',
+      );
+    }
+
+    if (payload.studyCode && payload.studyCode !== study.studyCode) {
+      throw new BadRequestException(
+        'study_code no coincide con el estudio',
+      );
+    }
+
+    if (
+      payload.nutricionistId &&
+      payload.nutricionistId !== study.nutritionistId
+    ) {
+      throw new BadRequestException(
+        'nutricionist_id no coincide con el estudio',
+      );
+    }
+
+    if (payload.patientId && payload.patientId !== study.patientCode) {
+      throw new BadRequestException(
+        'patient_id no coincide con el estudio',
+      );
+    }
+
+    if (payload.studyDate) {
+      const normalizedStudyDate = this.normalizeToDateOnly(payload.studyDate);
+      if (!normalizedStudyDate) {
+        throw new BadRequestException(
+          'study_date invalido. Usa formato YYYY-MM-DD o ISO 8601',
+        );
+      }
+      if (normalizedStudyDate !== study.studyDate) {
+        throw new BadRequestException(
+          'study_date no coincide con el estudio',
+        );
+      }
+    }
+
+    if (payload.reportDate) {
+      const parsedReportDate = new Date(payload.reportDate);
+      if (Number.isNaN(parsedReportDate.getTime())) {
+        throw new BadRequestException(
+          'report_date o created_at invalido. Usa formato ISO 8601',
+        );
+      }
+    }
   }
 
   private normalizeToDateOnly(value: string): string | null {
@@ -1071,5 +1201,11 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
   private getErrorMessage(error: unknown): string {
     if (error instanceof Error) return error.message;
     return 'Unknown processing error';
+  }
+
+  private normalizeOptionalString(value?: string): string | undefined {
+    if (typeof value !== 'string') return undefined;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
   }
 }

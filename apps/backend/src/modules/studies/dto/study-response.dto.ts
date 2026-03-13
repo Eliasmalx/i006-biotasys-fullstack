@@ -1,6 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Role } from '../../../common/enums/role.enum';
-import { AiResult } from '../enums/ai-result.enum';
 import { PatientSex } from '../enums/patient-sex.enum';
 import { ProcessingState } from '../enums/processing-state.enum';
 import { StudyStatus } from '../enums/study-status.enum';
@@ -49,9 +48,6 @@ export class StudyResponseDto {
 
   @ApiProperty({ enum: StudyStatus, example: StudyStatus.EN_ANALISIS })
   status!: StudyStatus;
-
-  @ApiProperty({ enum: AiResult, example: AiResult.SIN_RESULTADO })
-  aiResult!: AiResult;
 
   @ApiProperty({ enum: ProcessingState, example: ProcessingState.PENDING })
   processingState!: ProcessingState;

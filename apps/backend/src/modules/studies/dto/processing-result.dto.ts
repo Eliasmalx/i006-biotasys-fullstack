@@ -1,14 +1,12 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsDateString,
-  IsEnum,
   IsNotEmpty,
   IsObject,
   IsOptional,
   IsString,
   IsUrl,
 } from 'class-validator';
-import { ExternalAiResult } from '../enums/ai-result.enum';
 
 export class ProcessingResultDto {
   @ApiPropertyOptional({
@@ -35,12 +33,13 @@ export class ProcessingResultDto {
   @IsOptional()
   normalizedJson?: Record<string, unknown>;
 
-  @ApiProperty({
-    enum: ExternalAiResult,
-    example: ExternalAiResult.EQUILIBRADA,
+  @ApiPropertyOptional({
+    example: 'f37e86f5-95d5-46db-b255-f31a2f0eb2ec',
+    description: 'Formato IA en snake_case',
   })
-  @IsEnum(ExternalAiResult)
-  aiResult!: ExternalAiResult;
+  @IsOptional()
+  @IsString()
+  study_id?: string;
 
   @ApiPropertyOptional({
     example: 'BIO-123',
@@ -49,6 +48,24 @@ export class ProcessingResultDto {
   @IsOptional()
   @IsString()
   study_code?: string;
+
+  @ApiPropertyOptional({
+    example: '7ec2c8ca-c633-43ea-95dc-02af73ad2018',
+    description:
+      'Formato IA en snake_case. Opcional y redundante; si viene, se valida contra el estudio',
+  })
+  @IsOptional()
+  @IsString()
+  nutricionist_id?: string;
+
+  @ApiPropertyOptional({
+    example: 'PCT-AR-56321',
+    description:
+      'Formato IA en snake_case. Opcional y redundante; si viene, se valida contra el estudio',
+  })
+  @IsOptional()
+  @IsString()
+  patient_id?: string;
 
   @ApiPropertyOptional({
     type: 'object',
@@ -115,6 +132,15 @@ export class ProcessingResultDto {
   @IsOptional()
   @IsDateString()
   report_date?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-03-06T16:26:04.105367Z',
+    description:
+      'Formato IA en snake_case. Alias aceptado de report_date; se normaliza internamente',
+  })
+  @IsOptional()
+  @IsDateString()
+  created_at?: string;
 
   @ApiPropertyOptional({
     type: 'object',

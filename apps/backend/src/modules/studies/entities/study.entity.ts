@@ -11,7 +11,6 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { User } from '../../users/entities/user.entity';
 import { StudyStatus } from '../enums/study-status.enum';
-import { AiResult } from '../enums/ai-result.enum';
 import { PatientSex } from '../enums/patient-sex.enum';
 import { ProcessingState } from '../enums/processing-state.enum';
 
@@ -67,10 +66,6 @@ export class Study {
   @ApiProperty({ enum: StudyStatus, example: StudyStatus.SOLICITADO })
   @Column({ type: 'enum', enum: StudyStatus })
   status!: StudyStatus;
-
-  @ApiProperty({ enum: AiResult, example: AiResult.SIN_RESULTADO })
-  @Column({ type: 'enum', enum: AiResult, default: AiResult.SIN_RESULTADO })
-  aiResult!: AiResult;
 
   @ApiProperty({ required: false, type: Object })
   @Column({ type: 'jsonb', nullable: true })
