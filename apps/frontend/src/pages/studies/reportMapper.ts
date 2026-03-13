@@ -9,6 +9,13 @@ export interface ReportStudy {
   normalizedJson?: any;
 }
 
+export interface ReportMetricGauge {
+  label: string;
+  value: string;
+  caption: string;
+  percent: number;
+}
+
 export interface ReportViewModel {
   header: {
     patientCode: string;
@@ -17,17 +24,19 @@ export interface ReportViewModel {
   };
   summary: {
     title: string;
-    conclusions: string;
+    description: string;
     tags: string[];
   };
   generalSummary: {
-    summary: string;
-    summaryTags: string[];
+    title: string;
+    description: string;
+    tags: string[];
   };
   metrics: {
     fbRatio: string;
     shannon: string;
     riskScore: string;
+    gauges: ReportMetricGauge[];
   };
   compositionRows: Array<{
     name: string;
@@ -46,6 +55,7 @@ export interface ReportViewModel {
     name: string;
     value: string;
     implication: string;
+    percent: number;
   }>;
   pdfUrl: string | null;
 }
@@ -54,9 +64,7 @@ const formatDate = (value?: string | null) => {
   if (!value) return "No disponible";
 
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
+  if (Number.isNaN(parsed.getTime())) return value;
 
   return parsed.toLocaleDateString("es-ES");
 };
@@ -72,27 +80,117 @@ const labelize = (value: string) =>
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
+const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
+
+const percentFromLabel = (value: string) => {
+  const normalized = value.toLowerCase();
+
+  if (normalized.includes("muy alta") || normalized.includes("óptimo") || normalized.includes("elevada")) return 88;
+  if (normalized.includes("alta") || normalized.includes("normal")) return 76;
+  if (normalized.includes("moderada") || normalized.includes("media")) return 60;
+  if (normalized.includes("baja") || normalized.includes("detectable")) return 38;
+  if (normalized.includes("no disponible") || normalized.includes("inconclus")) return 20;
+  return 52;
+};
+
+const deriveHeroTitle = (globalIndicator: string, riskScore: number | null, tags: string[]) => {
+  const normalizedText = [globalIndicator, ...tags].join(" ").toLowerCase();
+
+  if (
+    normalizedText.includes("óptimo") ||
+    normalizedText.includes("salud") ||
+    normalizedText.includes("equilibr") ||
+    normalizedText.includes("eubiosis") ||
+    (riskScore !== null && riskScore <= 33)
+  ) {
+    return "Microbiota equilibrada";
+  }
+
+  if (
+    normalizedText.includes("alter") ||
+    normalizedText.includes("disbios") ||
+    normalizedText.includes("medio") ||
+    (riskScore !== null && riskScore <= 66)
+  ) {
+    return "Microbiota con alteraciones";
+  }
+
+  return "Microbiota comprometida";
+};
+
+const normalizePresence = (abundance: number) => {
+  if (abundance >= 10) return "Predominante";
+  if (abundance >= 5) return "Relevante";
+  if (abundance > 0) return "Detectable";
+  return "No disponible";
+};
+
+const numberValue = (value: unknown): number | null => {
+  if (typeof value === "number") return value;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 export const mapStudyToReportView = (study: ReportStudy): ReportViewModel => {
   const normalized = study.normalizedJson ?? {};
   const interpretation = normalized.interpretation ?? {};
   const finalObservations = interpretation.final_observations ?? {};
   const generalSummary = interpretation.general_summary ?? {};
+  const bacterialComposition = Array.isArray(interpretation.bacterial_composition)
+    ? interpretation.bacterial_composition
+    : [];
+  const predominantGenera = Array.isArray(normalized.data?.taxonomy?.predominant_genera)
+    ? normalized.data.taxonomy.predominant_genera
+    : [];
   const inferredMetabolicFunctions = Array.isArray(interpretation.inferred_metabolic_functions)
     ? interpretation.inferred_metabolic_functions
     : [];
   const fallbackFunctionality = normalized.data?.functionality ?? {};
+  const diversity = normalized.data?.diversity ?? {};
+
+  const riskScore = numberValue(finalObservations.risk_score);
+  const conclusionTags = Array.isArray(finalObservations.conclusion_tags) ? finalObservations.conclusion_tags : [];
+  const summaryTags = Array.isArray(generalSummary.summary_tags) ? generalSummary.summary_tags : [];
+  const heroTitle = deriveHeroTitle(finalObservations.global_indicator || "", riskScore, [...conclusionTags, ...summaryTags]);
+
+  const compositionRows = predominantGenera.length
+    ? predominantGenera.map((item: any) => ({
+        name: item?.name || "No disponible",
+        presence: normalizePresence(Number(item?.abundance ?? 0)),
+        implication:
+          bacterialComposition.find((entry: any) => (entry?.gender || entry?.name) === item?.name)?.clinical_implication ||
+          "-",
+      }))
+    : bacterialComposition.map((item: any) => ({
+        name: item?.gender || item?.name || "No disponible",
+        presence: item?.presence || "No disponible",
+        implication: item?.clinical_implication || "-",
+      }));
 
   const metabolicFunctions = inferredMetabolicFunctions.length
-    ? inferredMetabolicFunctions.map((item: any, index: number) => ({
-        name: item?.function_headline || item?.function || `Función ${index + 1}`,
-        value: item?.level || item?.value || "No disponible",
-        implication: item?.clinical_implication || item?.description || "No disponible",
-      }))
-    : Object.entries(fallbackFunctionality).map(([key, value]) => ({
-        name: labelize(key),
-        value: formatMetric(value),
-        implication: "No disponible",
-      }));
+    ? inferredMetabolicFunctions.map((item: any, index: number) => {
+        const value = item?.level || item?.value || "No disponible";
+        return {
+          name: item?.function_headline || item?.function || `Función ${index + 1}`,
+          value,
+          implication: item?.clinical_implication || item?.description || "No disponible",
+          percent: percentFromLabel(String(value)),
+        };
+      })
+    : Object.entries(fallbackFunctionality)
+        .filter(([key]) => key !== "functional_markers_list" && key !== "opportunistic_microorganisms")
+        .map(([key, value]) => {
+          const formatted = formatMetric(value);
+          return {
+            name: labelize(key),
+            value: formatted,
+            implication: "No disponible",
+            percent: percentFromLabel(formatted),
+          };
+        });
+
+  const fbRatio = formatMetric(generalSummary.firmicutes_bacteroidetes_ratio ?? normalized.data?.taxonomy?.firmicutes_bacteroidetes_ratio);
+  const shannon = formatMetric(generalSummary.shannon_index ?? diversity.shannon_index);
 
   return {
     header: {
@@ -101,38 +199,56 @@ export const mapStudyToReportView = (study: ReportStudy): ReportViewModel => {
       analysisDate: formatDate(normalized.report_date || study.completedAt || study.studyDate),
     },
     summary: {
-      title: finalObservations.global_indicator || "Informe de microbiota intestinal",
-      conclusions: finalObservations.conclusions || "No disponible",
-      tags: Array.isArray(finalObservations.conclusion_tags) ? finalObservations.conclusion_tags : [],
+      title: heroTitle,
+      description: generalSummary.summary || finalObservations.conclusions || "No disponible",
+      tags: summaryTags.length ? summaryTags : conclusionTags,
     },
     generalSummary: {
-      summary: generalSummary.summary || "No disponible",
-      summaryTags: Array.isArray(generalSummary.summary_tags) ? generalSummary.summary_tags : [],
+      title: "Resumen general",
+      description: finalObservations.conclusions || generalSummary.summary || "No disponible",
+      tags: conclusionTags,
     },
     metrics: {
-      fbRatio: formatMetric(generalSummary.firmicutes_bacteroidetes_ratio),
-      shannon: formatMetric(generalSummary.shannon_index),
-      riskScore: formatMetric(finalObservations.risk_score),
+      fbRatio,
+      shannon,
+      riskScore: formatMetric(riskScore),
+      gauges: [
+        {
+          label: "F/B Ratio",
+          value: fbRatio,
+          caption: generalSummary.firmicutes_bacteroidetes_range || "Rango normal adulto",
+          percent: clamp(((numberValue(generalSummary.firmicutes_bacteroidetes_ratio) ?? 1) / 2.5) * 100),
+        },
+        {
+          label: "Índice Shannon",
+          value: shannon,
+          caption: generalSummary.shannon_range || "Diversidad",
+          percent: clamp(((numberValue(generalSummary.shannon_index) ?? 0) / 5) * 100),
+        },
+      ],
     },
-    compositionRows: Array.isArray(interpretation.bacterial_composition)
-      ? interpretation.bacterial_composition.map((item: any) => ({
-          name: item?.gender || item?.name || "No disponible",
-          presence: item?.presence || "No disponible",
-          implication: item?.clinical_implication || "No disponible",
-        }))
-      : [],
+    compositionRows,
     diversityRows: Array.isArray(interpretation.bacterial_diversity)
       ? interpretation.bacterial_diversity.map((item: any) => ({
           headline: item?.diversity_headline || "No disponible",
           implication: item?.clinical_implication || "No disponible",
         }))
       : [],
-    opportunists: Array.isArray(interpretation.opportunistic_microorganisms)
+    opportunists: Array.isArray(interpretation.opportunistic_microorganisms) && interpretation.opportunistic_microorganisms.length
       ? interpretation.opportunistic_microorganisms.map((item: any) => ({
           name: item?.name || item?.gender || "No disponible",
           implication: item?.clinical_implication || item?.presence || "No disponible",
         }))
-      : [],
+      : [
+          {
+            name: "Otros oportunistas relevantes",
+            implication: "No detectado",
+          },
+          {
+            name: "Patógenos de interés",
+            implication: "No detectado",
+          },
+        ],
     metabolicFunctions,
     pdfUrl: study.pdfUrl ?? null,
   };

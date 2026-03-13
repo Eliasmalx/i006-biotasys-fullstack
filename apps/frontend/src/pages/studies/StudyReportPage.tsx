@@ -2,10 +2,38 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import { api } from "../../services/api";
-import { mapStudyToReportView, ReportStudy } from "./reportMapper";
+import { mapStudyToReportView, ReportMetricGauge, ReportStudy } from "./reportMapper";
+import "./StudyReportPage.css";
 
-const sectionCard = "rounded-xl border border-slate-200 bg-white p-5 shadow-sm";
-const tagStyle = "inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600";
+const Gauge = ({ item }: { item: ReportMetricGauge }) => {
+  const radius = 42;
+  const circumference = Math.PI * radius;
+  const offset = circumference - (item.percent / 100) * circumference;
+
+  return (
+    <div className="report-gauge">
+      <svg viewBox="0 0 120 80" className="report-gauge__svg" aria-hidden="true">
+        <path d="M18 62a42 42 0 0 1 84 0" className="report-gauge__track" />
+        <path
+          d="M18 62a42 42 0 0 1 84 0"
+          className="report-gauge__progress"
+          style={{ strokeDasharray: circumference, strokeDashoffset: offset }}
+        />
+        <line
+          x1="60"
+          y1="62"
+          x2={String(60 + 26 * Math.cos((Math.PI * (item.percent / 100)) - Math.PI))}
+          y2={String(62 + 26 * Math.sin((Math.PI * (item.percent / 100)) - Math.PI))}
+          className="report-gauge__needle"
+        />
+        <circle cx="60" cy="62" r="4" className="report-gauge__center" />
+      </svg>
+      <div className="report-gauge__value">{item.value}</div>
+      <div className="report-gauge__label">{item.label}</div>
+      <div className="report-gauge__caption">{item.caption}</div>
+    </div>
+  );
+};
 
 export const StudyReportPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -48,18 +76,16 @@ export const StudyReportPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-[calc(100vh-80px)] bg-slate-100 px-6 py-10 text-slate-700">
-        <div className="mx-auto max-w-7xl rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          Cargando informe...
-        </div>
+      <div className="report-page report-page--state">
+        <div className="report-shell report-state">Cargando informe...</div>
       </div>
     );
   }
 
   if (error || !study || !report) {
     return (
-      <div className="min-h-[calc(100vh-80px)] bg-slate-100 px-6 py-10">
-        <div className="mx-auto max-w-7xl rounded-xl border border-rose-200 bg-white p-8 text-center text-rose-600 shadow-sm">
+      <div className="report-page report-page--state">
+        <div className="report-shell report-state report-state--error">
           {error || "No se pudo cargar el informe."}
         </div>
       </div>
@@ -68,199 +94,175 @@ export const StudyReportPage = () => {
 
   if (study.status !== "INFORME_LISTO" || !study.normalizedJson) {
     return (
-      <div className="min-h-[calc(100vh-80px)] bg-slate-100 px-6 py-10">
-        <div className="mx-auto max-w-7xl rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-          <div className="mb-4 flex items-center gap-3">
-            <button
-              type="button"
-              className="text-indigo-600 hover:text-indigo-500"
-              onClick={() => navigate(-1)}
-            >
-              ← Volver
-            </button>
-          </div>
-          <h1 className="mb-3 text-2xl font-semibold text-slate-900">Informe de microbiota intestinal</h1>
-          <p className="text-slate-600">
-            Este estudio aún no tiene un informe disponible para visualizar.
-          </p>
+      <div className="report-page report-page--state">
+        <div className="report-shell report-state">
+          <button type="button" className="report-back" onClick={() => navigate(-1)}>
+            ← Volver
+          </button>
+          <h1 className="report-title">Informe de microbiota intestinal</h1>
+          <p className="report-empty">Este estudio aún no tiene un informe disponible para visualizar.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-slate-100 px-6 py-8 text-slate-900">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <button
-              type="button"
-              className="mb-4 text-sm font-medium text-indigo-600 hover:text-indigo-500"
-              onClick={() => navigate(-1)}
-            >
-              ← Volver
+    <div className="report-page">
+      <div className="report-shell">
+        <div className="report-topbar">
+          <div className="report-topbar__left">
+            <button type="button" className="report-back" onClick={() => navigate(-1)}>
+              ←
             </button>
-            <h1 className="mb-3 text-3xl font-semibold">Informe de microbiota intestinal</h1>
-            <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm text-slate-600">
-              <span>
-                Paciente: <strong className="text-slate-900">{report.header.patientCode}</strong>
-              </span>
-              <span>
-                Estudio: <strong className="font-mono text-slate-900">{report.header.studyCode}</strong>
-              </span>
-              <span>
-                Análisis: <strong className="text-slate-900">{report.header.analysisDate}</strong>
-              </span>
+            <div>
+              <h1 className="report-title">Informe de microbiota intestinal</h1>
+              <div className="report-meta">
+                <span>Paciente: <strong>{report.header.patientCode}</strong></span>
+                <span>Estudio: <strong className="report-meta__code">{report.header.studyCode}</strong></span>
+                <span>Análisis: <strong>{report.header.analysisDate}</strong></span>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Button type="button" onClick={openPdf} disabled={!report.pdfUrl}>
-              Descargar archivo original
+          <div className="report-actions">
+            <Button type="button" className="report-actions__primary" onClick={openPdf} disabled={!report.pdfUrl}>
+              + Descargar archivo original
             </Button>
-            <Button type="button" variant="outline" onClick={openPdf} disabled={!report.pdfUrl} className="border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50">
+            <button type="button" className="report-actions__secondary" onClick={openPdf} disabled={!report.pdfUrl}>
               Generar pdf
-            </Button>
+            </button>
           </div>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[1.1fr_0.8fr_1.2fr]">
-          <div className="space-y-5">
-            <section className={sectionCard}>
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-lg text-emerald-600">✓</div>
-                <div>
-                  <h2 className="text-2xl font-semibold text-emerald-700">{report.summary.title}</h2>
-                  <p className="text-sm text-slate-500">Estado global del informe</p>
-                </div>
+        <div className="report-grid">
+          <div className="report-column report-column--left">
+            <section className="report-card report-card--hero">
+              <div className="report-card__header report-card__header--success">
+                <span className="report-card__icon">✓</span>
+                <h2>{report.summary.title}</h2>
               </div>
-
-              <p className="mb-4 text-sm leading-6 text-slate-700">{report.summary.conclusions}</p>
-
-              <div className="flex flex-wrap gap-2">
-                {report.summary.tags.length ? (
-                  report.summary.tags.map((tag) => (
-                    <span key={tag} className={tagStyle}>
-                      {tag}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-sm text-slate-500">No disponible</span>
-                )}
+              <div className="report-card__body">
+                <p className="report-card__text">{report.summary.description}</p>
+                <div className="report-tags">
+                  {report.summary.tags.length ? (
+                    report.summary.tags.map((tag) => (
+                      <span key={tag} className="report-tag">{tag}</span>
+                    ))
+                  ) : (
+                    <span className="report-empty-inline">No disponible</span>
+                  )}
+                </div>
               </div>
             </section>
 
-            <section className={sectionCard}>
-              <h3 className="mb-4 text-lg font-semibold">Resumen general</h3>
-              <p className="mb-4 text-sm leading-6 text-slate-700">{report.generalSummary.summary}</p>
-              <div className="flex flex-wrap gap-2">
-                {report.generalSummary.summaryTags.length ? (
-                  report.generalSummary.summaryTags.map((tag) => (
-                    <span key={tag} className={tagStyle}>
-                      {tag}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-sm text-slate-500">No disponible</span>
-                )}
+            <section className="report-card">
+              <div className="report-card__header">
+                <h3>{report.generalSummary.title}</h3>
               </div>
-            </section>
-
-            <section className={sectionCard}>
-              <h3 className="mb-4 text-lg font-semibold">Métricas destacadas</h3>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-lg bg-slate-50 p-4 text-center">
-                  <div className="text-2xl font-semibold text-indigo-600">{report.metrics.fbRatio}</div>
-                  <div className="mt-1 text-sm text-slate-600">Ratio F/B</div>
+              <div className="report-card__body report-card__body--spaced">
+                <p className="report-card__text">{report.generalSummary.description}</p>
+                <div className="report-tags">
+                  {report.generalSummary.tags.length ? (
+                    report.generalSummary.tags.map((tag) => (
+                      <span key={tag} className="report-tag">{tag}</span>
+                    ))
+                  ) : (
+                    <span className="report-empty-inline">No disponible</span>
+                  )}
                 </div>
-                <div className="rounded-lg bg-slate-50 p-4 text-center">
-                  <div className="text-2xl font-semibold text-indigo-600">{report.metrics.shannon}</div>
-                  <div className="mt-1 text-sm text-slate-600">Índice Shannon</div>
-                </div>
-                <div className="rounded-lg bg-slate-50 p-4 text-center">
-                  <div className="text-2xl font-semibold text-indigo-600">{report.metrics.riskScore}</div>
-                  <div className="mt-1 text-sm text-slate-600">Riesgo</div>
+                <div className="report-gauges">
+                  {report.metrics.gauges.map((item) => (
+                    <Gauge key={item.label} item={item} />
+                  ))}
                 </div>
               </div>
             </section>
           </div>
 
-          <div className="space-y-5">
-            <section className={sectionCard}>
-              <h3 className="mb-4 text-lg font-semibold">Diversidad y riqueza</h3>
-              <div className="space-y-4">
+          <div className="report-column report-column--middle">
+            <section className="report-card">
+              <div className="report-card__header">
+                <h3>Diversidad y riqueza</h3>
+              </div>
+              <div className="report-list">
                 {report.diversityRows.length ? (
                   report.diversityRows.map((row) => (
-                    <div key={row.headline} className="rounded-lg bg-slate-50 p-4">
-                      <p className="font-medium text-slate-900">{row.headline}</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">{row.implication}</p>
+                    <div key={row.headline} className="report-list__item">
+                      <div className="report-list__bullet">•</div>
+                      <div>
+                        <p className="report-list__title">{row.headline}</p>
+                        <p className="report-list__text">{row.implication}</p>
+                      </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-slate-500">No disponible</p>
+                  <div className="report-empty-block">No disponible</div>
                 )}
               </div>
             </section>
 
-            <section className={sectionCard}>
-              <h3 className="mb-4 text-lg font-semibold">Microorganismos oportunistas</h3>
-              <div className="space-y-4">
-                {report.opportunists.length ? (
-                  report.opportunists.map((item, index) => (
-                    <div key={`${item.name}-${index}`} className="border-b border-slate-200 pb-4 last:border-b-0 last:pb-0">
-                      <p className="font-medium text-slate-900">{item.name}</p>
-                      <p className="mt-2 text-sm text-slate-600">{item.implication}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-slate-500">No se detectaron microorganismos oportunistas relevantes.</p>
-                )}
+            <section className="report-card">
+              <div className="report-card__header">
+                <h3>Microorganismos oportunistas</h3>
+              </div>
+              <div className="report-opportunists">
+                {report.opportunists.map((item) => (
+                  <div key={item.name} className="report-opportunists__item">
+                    <p className="report-opportunists__title">{item.name}</p>
+                    <p className="report-opportunists__text">{item.implication}</p>
+                  </div>
+                ))}
               </div>
             </section>
           </div>
 
-          <div className="space-y-5">
-            <section className={sectionCard}>
-              <h3 className="mb-4 text-lg font-semibold">Composición bacteriana</h3>
-              <div className="overflow-hidden rounded-lg border border-slate-200">
-                <div className="grid grid-cols-[1fr_130px_1.4fr] bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="report-column report-column--right">
+            <section className="report-card">
+              <div className="report-card__header">
+                <h3>Composición bacteriana</h3>
+              </div>
+              <div className="report-table">
+                <div className="report-table__head">
                   <span>Género</span>
                   <span>Presencia</span>
                   <span>Evaluación inferida</span>
                 </div>
                 {report.compositionRows.length ? (
                   report.compositionRows.map((row) => (
-                    <div key={`${row.name}-${row.presence}`} className="grid grid-cols-[1fr_130px_1.4fr] gap-4 border-t border-slate-200 px-4 py-4 text-sm">
-                      <span className="font-medium text-slate-900">{row.name}</span>
+                    <div key={`${row.name}-${row.presence}`} className="report-table__row">
+                      <span className="report-table__name">{row.name}</span>
                       <span>
-                        <span className="inline-flex rounded-full bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700">
-                          {row.presence}
-                        </span>
+                        <span className="report-presence">{row.presence}</span>
                       </span>
-                      <span className="text-slate-600">{row.implication}</span>
+                      <span className="report-table__text">{row.implication}</span>
                     </div>
                   ))
                 ) : (
-                  <div className="px-4 py-6 text-sm text-slate-500">No disponible</div>
+                  <div className="report-empty-block">No disponible</div>
                 )}
               </div>
             </section>
 
-            <section className={sectionCard}>
-              <h3 className="mb-4 text-lg font-semibold">Funciones metabólicas inferidas</h3>
-              <div className="space-y-4">
+            <section className="report-card">
+              <div className="report-card__header">
+                <h3>Funciones metabólicas inferidas</h3>
+              </div>
+              <div className="report-functions">
                 {report.metabolicFunctions.length ? (
                   report.metabolicFunctions.map((item) => (
-                    <div key={item.name} className="rounded-lg bg-slate-50 p-4">
-                      <div className="mb-2 flex items-center justify-between gap-3">
-                        <p className="font-medium text-slate-900">{item.name}</p>
-                        <span className="text-sm font-medium text-indigo-600">{item.value}</span>
+                    <div key={item.name} className="report-function">
+                      <div className="report-function__header">
+                        <span className="report-function__name">{item.name}</span>
+                        <span className="report-function__value">{item.value}</span>
                       </div>
-                      <p className="text-sm text-slate-600">{item.implication}</p>
+                      <div className="report-function__bar">
+                        <span className="report-function__fill" style={{ width: `${item.percent}%` }} />
+                      </div>
+                      <p className="report-function__text">{item.implication}</p>
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-slate-500">No disponible</p>
+                  <div className="report-empty-block">No disponible</div>
                 )}
               </div>
             </section>
