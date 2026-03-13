@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../components/common/Button";
 import { api } from "../../services/api";
+import { useNavigate } from "react-router-dom";
 
 type Estado =
   | "SOLICITADO"
@@ -37,6 +38,8 @@ export const DashboardNutritionist = () => {
   // Paginación
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+
+  const navigate = useNavigate();
 
   const loadStudies = async () => {
     setLoading(true);
@@ -98,9 +101,9 @@ export const DashboardNutritionist = () => {
           </p>
         </div>
 
-        <Button type="submit" className="ml-4">
-          + Nuevo estudio
-        </Button>
+    <Button type="button" className="ml-4" onClick={() => navigate('/studies/new')}>
+      + Nuevo estudio
+     </Button>
       </div>
 
       {/* Search + Filters */}
