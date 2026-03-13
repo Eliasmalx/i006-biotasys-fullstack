@@ -1,17 +1,15 @@
-import React from "react";
-import { Navigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
-interface ProtectedRouteProps {
+interface PublicRouteProps {
   children: React.ReactNode;
   redirectTo?: string;
-  role?: string;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
-  children,
-  redirectTo = "/login",
-  role,
+export const PublicRoute: React.FC<PublicRouteProps> = ({ 
+  children, 
+  redirectTo,
 }) => {
   const { user, isAuthenticated, loading } = useAuth();
 
@@ -26,15 +24,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
+  // Not authenticated → show the public page (login, register, etc.)
   if (!isAuthenticated || !user) {
-    return <Navigate to={redirectTo} replace />;
+    return <>{children}</>;
   }
 
-  if (role && user.role?.toLowerCase() !== role.toLowerCase()) {
-    return <Navigate to={redirectTo} replace />;
-  }
+  // Authenticated → redirect away from public pages
+  const target = redirectTo || (
+    user.role?.toLowerCase() === 'laboratorio'
+      ? '/dashboardLaboratory'
+      : '/dashboardNutritionist'
+  );
 
-  return <>{children}</>;
+  return <Navigate to={target} replace />;
 };
 
-export default ProtectedRoute;
+export default PublicRoute;
