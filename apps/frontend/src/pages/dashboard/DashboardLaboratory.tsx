@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
+import { UploadResultModal } from "../../modal/UploadResultModal";
 
 type OrderStatus = "SOLICITADO" | "RECIBIDO" | "EN_ANALISIS" | "INFORME_LISTO" | "RECHAZADO";
 
-interface StudyRow {
+export interface StudyRow {
   id: string;
   patientCode: string;
   studyCode: string;
@@ -15,15 +16,18 @@ interface StudyRow {
 export const DashboardLaboratory = () => {
   const [orders, setOrders] = useState<StudyRow[]>([]);
   const [loading, setLoading] = useState(true);
-
+  
   // Filtros
   const [search, setSearch] = useState("");
   const [estado, setEstado] = useState("");
   const [date, setDate] = useState("");
-
+  
   // Paginación
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  
+  // Modal de carga de resultados
+  const [selectedStudy, setSelectedStudy] = useState<StudyRow | null>(null);
 
   const loadOrders = async () => {
     setLoading(true);
@@ -55,6 +59,25 @@ export const DashboardLaboratory = () => {
     setDate("");
     setPage(1);
     loadOrders();
+  };
+
+  // Función para manejar la carga a la API
+  const handleUploadFile = async (file: File) => {
+    if (!selectedStudy) return;
+    
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      // await api.uploadStudyResults(selectedStudy.id, formData);
+      
+      alert("Resultados cargados exitosamente");
+      setSelectedStudy(null); // Cierra el modal
+      loadOrders(); // Recarga la tabla para actualizar el estado a RECIBIDO/EN_ANALISIS
+    } catch (err) {
+      console.error("Error al cargar resultados:", err);
+      alert("Ocurrió un error al subir el archivo");
+    }
   };
 
   return (
@@ -128,7 +151,7 @@ export const DashboardLaboratory = () => {
                   Cargando órdenes...
                 </td>
               </tr>
-            ) : orders.length === 0 ? (
+            ) : !orders || orders.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
                   No hay órdenes disponibles
@@ -146,7 +169,10 @@ export const DashboardLaboratory = () => {
                   <td className="px-4 py-3">{row.status}</td>
                   <td className="px-4 py-3">
                     {row.status === "SOLICITADO" ? (
-                      <button className="text-blue-600 underline">
+                      <button 
+                        className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                        onClick={() => setSelectedStudy(row)}
+                      >
                         Cargar archivo
                       </button>
                     ) : (
@@ -174,13 +200,20 @@ export const DashboardLaboratory = () => {
 
         <button
           className="px-2"
-          disabled={orders.length < 10}
+          disabled={!orders || orders.length < 10}
           onClick={() => setPage((p) => p + 1)}
         >
           &gt;
         </button>
 
         <span className="text-gray-500 ml-2">{total} resultados</span>
+
+        <UploadResultModal 
+        isOpen={!!selectedStudy} 
+        onClose={() => setSelectedStudy(null)} 
+        study={selectedStudy}
+        onUpload={handleUploadFile}
+      />
       </div>
     </div>
   );
