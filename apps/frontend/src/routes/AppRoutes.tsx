@@ -5,6 +5,7 @@ import PublicRoute from "./PublicRoute";
 import Login from "../pages/login/Login";
 import { RegisterPage } from "../pages/register/RegisterPage";
 import { CreateStudyPage } from "../pages/studies/CreateStudy";
+import { StudyReportPage } from "../pages/studies/StudyReportPage";
 import { DashboardNutritionist } from "../pages/dashboard/DashboardNutritionist";
 import { DashboardLaboratory } from "../pages/dashboard/DashboardLaboratory";
 import { AcceptInvitationPage } from "../pages/AcceptInvitation";
@@ -17,8 +18,6 @@ import RegisterComplete from "../pages/register/RegisterComplete";
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
-
-      {/* Rutas públicas */}
       <Route
         path="/login"
         element={
@@ -46,7 +45,6 @@ export const AppRoutes: React.FC = () => {
         }
       />
 
-      {/* Alias para verificación de email desde el backend */}
       <Route
         path="/auth/verify-email"
         element={
@@ -56,7 +54,6 @@ export const AppRoutes: React.FC = () => {
         }
       />
 
-      {/* Dashboard Nutricionista */}
       <Route
         path="/dashboardNutritionist"
         element={
@@ -67,23 +64,38 @@ export const AppRoutes: React.FC = () => {
         }
       />
 
-      {/* Crear nuevo estudio (Nutricionista) */}
       <Route
         path="/studies/new"
         element={
           <ProtectedRoute role="nutricionista">
             <CreateStudyPage />
-           </ProtectedRoute>
+          </ProtectedRoute>
         }
       />
 
-      {/* Otras rutas */}
+      <Route
+        path="/studies/:id/report"
+        element={
+          <ProtectedRoute role="nutricionista">
+            <Navbar />
+            <StudyReportPage />
+          </ProtectedRoute>
+        }
+      />
+
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/invitations/accept/:token" element={<AcceptInvitationPage />} />
       <Route path="/passwordRecovery" element={<PasswordRecovery />} />
       <Route path="/passwoedReset" element={<PasswordReset />} />
-      <Route path="/dashboardLaboratory" element={<DashboardNutritionist/>} />
-      
+      <Route
+        path="/dashboardLaboratory"
+        element={
+          <ProtectedRoute role="laboratorio">
+            <Navbar />
+            <DashboardLaboratory />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 };
