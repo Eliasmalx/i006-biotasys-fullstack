@@ -3,6 +3,8 @@
   patientCode: string;
   studyCode: string;
   studyDate: string;
+  patientAge?: number | null;
+  patientSex?: string | null;
   completedAt?: string | null;
   status: string;
   pdfUrl?: string | null;
@@ -23,12 +25,14 @@ export interface ReportViewModel {
     patientCode: string;
     studyCode: string;
     analysisDate: string;
+    profile: string | null;
   };
   summary: {
     status: ReportHeroStatus;
     title: string;
     description: string;
     tags: string[];
+    indicator: string | null;
   };
   generalSummary: {
     title: string;
@@ -40,6 +44,10 @@ export interface ReportViewModel {
     shannon: string;
     riskScore: string;
     gauges: ReportMetricGauge[];
+    secondaryStats: Array<{
+      label: string;
+      value: string;
+    }>;
   };
   compositionRows: Array<{
     name: string;
@@ -52,6 +60,8 @@ export interface ReportViewModel {
   }>;
   opportunists: Array<{
     name: string;
+    status: string;
+    score: string;
     implication: string;
   }>;
   metabolicFunctions: Array<{
@@ -59,6 +69,7 @@ export interface ReportViewModel {
     value: string;
     implication: string;
     percent: number;
+    score: string;
   }>;
   pdfUrl: string | null;
 }
@@ -88,10 +99,10 @@ const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min,
 const percentFromLabel = (value: string) => {
   const normalized = value.toLowerCase();
 
-  if (normalized.includes("muy alta") || normalized.includes("óptimo") || normalized.includes("elevada")) return 88;
+  if (normalized.includes("muy alta") || normalized.includes("óptimo") || normalized.includes("elevada") || normalized.includes("alto")) return 88;
   if (normalized.includes("alta") || normalized.includes("normal")) return 76;
-  if (normalized.includes("moderada") || normalized.includes("media")) return 60;
-  if (normalized.includes("baja") || normalized.includes("detectable")) return 38;
+  if (normalized.includes("moderada") || normalized.includes("media") || normalized.includes("alterada")) return 60;
+  if (normalized.includes("baja") || normalized.includes("detectable") || normalized.includes("reducida")) return 38;
   if (normalized.includes("no disponible") || normalized.includes("inconclus")) return 20;
   return 52;
 };
@@ -135,7 +146,8 @@ const deriveHeroStatus = (
     normalizedText.includes("alter") ||
     normalizedText.includes("disbios") ||
     normalizedText.includes("riesgo") ||
-    normalizedText.includes("desequilibrio")
+    normalizedText.includes("desequilibrio") ||
+    normalizedText.includes("mejora urgente")
   ) {
     return "altered";
   }
@@ -169,6 +181,13 @@ const numberValue = (value: unknown): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const formatProfile = (age?: number | null, sex?: string | null) => {
+  const parts: string[] = [];
+  if (typeof age === "number") parts.push(`${age} años`);
+  if (sex) parts.push(sex === "FEMENINO" ? "F" : sex === "MASCULINO" ? "M" : sex);
+  return parts.length ? parts.join(" · ") : null;
+};
+
 export const mapStudyToReportView = (study: ReportStudy): ReportViewModel => {
   const normalized = study.normalizedJson ?? {};
   const interpretation = normalized.interpretation ?? {};
@@ -191,28 +210,28 @@ export const mapStudyToReportView = (study: ReportStudy): ReportViewModel => {
   const summaryTags = Array.isArray(generalSummary.summary_tags) ? generalSummary.summary_tags : [];
   const heroStatus = deriveHeroStatus(finalObservations.global_indicator || "", riskScore, [...conclusionTags, ...summaryTags]);
 
-  const compositionRows = predominantGenera.length
-    ? predominantGenera.map((item: any) => ({
-        name: item?.name || "No disponible",
-        presence: normalizePresence(Number(item?.abundance ?? 0)),
-        implication:
-          bacterialComposition.find((entry: any) => (entry?.gender || entry?.name) === item?.name)?.clinical_implication ||
-          "-",
-      }))
-    : bacterialComposition.map((item: any) => ({
+  const compositionRows = bacterialComposition.length
+    ? bacterialComposition.map((item: any) => ({
         name: item?.gender || item?.name || "No disponible",
         presence: item?.presence || "No disponible",
         implication: item?.clinical_implication || "-",
+      }))
+    : predominantGenera.map((item: any) => ({
+        name: item?.name || "No disponible",
+        presence: normalizePresence(Number(item?.abundance ?? 0)),
+        implication: "-",
       }));
 
   const metabolicFunctions = inferredMetabolicFunctions.length
     ? inferredMetabolicFunctions.map((item: any, index: number) => {
-        const value = item?.level || item?.value || "No disponible";
+        const score = numberValue(item?.activity_score);
+        const value = item?.activity_status || item?.level || item?.value || "No disponible";
         return {
-          name: item?.function_headline || item?.function || `Función ${index + 1}`,
+          name: item?.metabolic_function || item?.function_headline || item?.function || `Función ${index + 1}`,
           value,
           implication: item?.clinical_implication || item?.description || "No disponible",
-          percent: percentFromLabel(String(value)),
+          percent: score !== null ? clamp(score) : percentFromLabel(String(value)),
+          score: score !== null ? `${score}/100` : "No disponible",
         };
       })
     : Object.entries(fallbackFunctionality)
@@ -224,6 +243,7 @@ export const mapStudyToReportView = (study: ReportStudy): ReportViewModel => {
             value: formatted,
             implication: "No disponible",
             percent: percentFromLabel(formatted),
+            score: "No disponible",
           };
         });
 
@@ -235,12 +255,14 @@ export const mapStudyToReportView = (study: ReportStudy): ReportViewModel => {
       patientCode: study.patientCode,
       studyCode: study.studyCode,
       analysisDate: formatDate(normalized.report_date || study.completedAt || study.studyDate),
+      profile: formatProfile(study.patientAge, study.patientSex),
     },
     summary: {
       status: heroStatus,
       title: statusLabelMap[heroStatus],
       description: generalSummary.summary || finalObservations.conclusions || "No disponible",
       tags: summaryTags.length ? summaryTags : conclusionTags,
+      indicator: finalObservations.global_indicator || null,
     },
     generalSummary: {
       title: "Resumen general",
@@ -265,6 +287,11 @@ export const mapStudyToReportView = (study: ReportStudy): ReportViewModel => {
           percent: clamp(((numberValue(generalSummary.shannon_index) ?? 0) / 5) * 100),
         },
       ],
+      secondaryStats: [
+        { label: "Risk score", value: formatMetric(riskScore) },
+        { label: "OTUs observados", value: formatMetric(diversity.observed_otus) },
+        { label: "Índice Simpson", value: formatMetric(diversity.simpson_index) },
+      ],
     },
     compositionRows,
     diversityRows: Array.isArray(interpretation.bacterial_diversity)
@@ -275,16 +302,22 @@ export const mapStudyToReportView = (study: ReportStudy): ReportViewModel => {
       : [],
     opportunists: Array.isArray(interpretation.opportunistic_microorganisms) && interpretation.opportunistic_microorganisms.length
       ? interpretation.opportunistic_microorganisms.map((item: any) => ({
-          name: item?.name || item?.gender || "No disponible",
-          implication: item?.clinical_implication || item?.presence || "No disponible",
+          name: item?.microorganism || item?.name || item?.gender || "No disponible",
+          status: item?.abundance_status || item?.presence || "No disponible",
+          score: item?.abundance_score !== undefined ? `${item.abundance_score}/100` : "No disponible",
+          implication: item?.clinical_implication || "No disponible",
         }))
       : [
           {
             name: "Otros oportunistas relevantes",
+            status: "No detectado",
+            score: "No disponible",
             implication: "No detectado",
           },
           {
             name: "Patógenos de interés",
+            status: "No detectado",
+            score: "No disponible",
             implication: "No detectado",
           },
         ],

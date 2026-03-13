@@ -128,12 +128,16 @@ export const StudyReportPage = () => {
               <div className="report-meta">
                 <span>Paciente: <strong>{report.header.patientCode}</strong></span>
                 <span>Estudio: <strong className="report-meta__code">{report.header.studyCode}</strong></span>
+                {report.header.profile ? <span>Perfil: <strong>{report.header.profile}</strong></span> : null}
                 <span>Análisis: <strong>{report.header.analysisDate}</strong></span>
               </div>
             </div>
           </div>
 
           <div className="report-actions">
+            {report.metrics.riskScore !== "No disponible" ? (
+              <div className="report-risk-badge">Riesgo {report.metrics.riskScore}/100</div>
+            ) : null}
             <Button type="button" className="report-actions__primary" onClick={openPdf} disabled={!report.pdfUrl}>
               + Descargar archivo original
             </Button>
@@ -150,7 +154,8 @@ export const StudyReportPage = () => {
                 <span className="report-card__icon">{heroUi.icon}</span>
                 <h2>{report.summary.title}</h2>
               </div>
-              <div className="report-card__body">
+              <div className="report-card__body report-card__body--spaced">
+                {report.summary.indicator ? <div className="report-indicator">{report.summary.indicator}</div> : null}
                 <p className="report-card__text">{report.summary.description}</p>
                 <div className="report-tags">
                   {report.summary.tags.length ? (
@@ -178,6 +183,14 @@ export const StudyReportPage = () => {
                   ) : (
                     <span className="report-empty-inline">No disponible</span>
                   )}
+                </div>
+                <div className="report-stats-grid">
+                  {report.metrics.secondaryStats.map((item) => (
+                    <div key={item.label} className="report-stat">
+                      <span className="report-stat__label">{item.label}</span>
+                      <strong className="report-stat__value">{item.value}</strong>
+                    </div>
+                  ))}
                 </div>
                 <div className="report-gauges">
                   {report.metrics.gauges.map((item) => (
@@ -217,7 +230,13 @@ export const StudyReportPage = () => {
               <div className="report-opportunists">
                 {report.opportunists.map((item) => (
                   <div key={item.name} className="report-opportunists__item">
-                    <p className="report-opportunists__title">{item.name}</p>
+                    <div className="report-opportunists__top">
+                      <p className="report-opportunists__title">{item.name}</p>
+                      <div className="report-opportunists__badges">
+                        <span className="report-presence">{item.status}</span>
+                        <span className="report-score">{item.score}</span>
+                      </div>
+                    </div>
                     <p className="report-opportunists__text">{item.implication}</p>
                   </div>
                 ))}
@@ -262,7 +281,10 @@ export const StudyReportPage = () => {
                     <div key={item.name} className="report-function">
                       <div className="report-function__header">
                         <span className="report-function__name">{item.name}</span>
-                        <span className="report-function__value">{item.value}</span>
+                        <div className="report-function__meta">
+                          <span className="report-function__value">{item.value}</span>
+                          <span className="report-score">{item.score}</span>
+                        </div>
                       </div>
                       <div className="report-function__bar">
                         <span className="report-function__fill" style={{ width: `${item.percent}%` }} />
