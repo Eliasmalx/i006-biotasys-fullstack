@@ -151,16 +151,13 @@ function FilterDropdown({
 export const DashboardLaboratory = () => {
   const [orders, setOrders] = useState<StudyRow[]>([]);
   const [loading, setLoading] = useState(true);
-    const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [date, setDate] = useState("");
-  
-  // Paginación
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
+
   
   // Modal de carga de resultados
   const [selectedStudy, setSelectedStudy] = useState<StudyRow | null>(null);
@@ -187,11 +184,11 @@ export const DashboardLaboratory = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter, date]);
+  };
 
   useEffect(() => {
     loadOrders();
-  }, [loadOrders]);
+  }, []);
 
   const toggleStatus = (value: string) => {
     setStatusFilter((prev) =>
@@ -385,7 +382,7 @@ export const DashboardLaboratory = () => {
                     </td>
                     <td>
                       {["SOLICITADO", "RECIBIDO"].includes(row.status) ? (
-                        <button type="button" className="dn-action-link">
+                        <button type="button" className="dn-action-link" onClick={() => setSelectedStudy(row)}>
                           Cargar archivo
                         </button>
                       ) : (
@@ -450,6 +447,13 @@ export const DashboardLaboratory = () => {
           >
             {totalPages} »
           </button>
+
+          <UploadResultModal
+        isOpen={selectedStudy !== null}
+        onClose={() => setSelectedStudy(null)}
+        study={selectedStudy}
+        onUpload={handleUploadFile}
+      />
         </div>
       )}
     </div>

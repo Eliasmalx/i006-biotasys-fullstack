@@ -1,48 +1,46 @@
 import { useState, useRef, DragEvent, ChangeEvent } from "react";
 import { StudyRow } from "../pages/dashboard/DashboardLaboratory";
-
+ 
 interface UploadResultModalProps {
   isOpen: boolean;
   onClose: () => void;
   study: StudyRow | null;
   onUpload: (file: File) => Promise<void>;
 }
-
+ 
 export const UploadResultModal = ({ isOpen, onClose, study, onUpload }: UploadResultModalProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+ 
   if (!isOpen || !study) return null;
-
+ 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(true);
   };
-
+ 
   const handleDragLeave = () => {
     setIsDragging(false);
   };
-
+ 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
     
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const droppedFile = e.dataTransfer.files[0];
-      validateAndSetFile(droppedFile);
+      validateAndSetFile(e.dataTransfer.files[0]);
     }
   };
-
+ 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       validateAndSetFile(e.target.files[0]);
     }
   };
-
+ 
   const validateAndSetFile = (selectedFile: File) => {
-    // Validar tipo JSON y peso menor a 50MB
     if (!selectedFile.name.endsWith('.json') && selectedFile.type !== 'application/json') {
       alert("Solo se permiten archivos .json");
       return;
@@ -53,7 +51,7 @@ export const UploadResultModal = ({ isOpen, onClose, study, onUpload }: UploadRe
     }
     setFile(selectedFile);
   };
-
+ 
   const handleSubmit = async () => {
     if (!file) return;
     setUploading(true);
@@ -67,7 +65,14 @@ export const UploadResultModal = ({ isOpen, onClose, study, onUpload }: UploadRe
       setUploading(false);
     }
   };
-
+ 
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "-";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+  };
+ 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 relative">
@@ -77,10 +82,10 @@ export const UploadResultModal = ({ isOpen, onClose, study, onUpload }: UploadRe
         >
           ✕
         </button>
-
+ 
         <h2 className="text-xl font-semibold text-gray-900">Cargar resultados de estudio</h2>
         <p className="text-gray-500 mb-6">Estudio: <span className="font-medium text-gray-800">{study.studyCode}</span></p>
-
+ 
         <div className="bg-gray-50 border border-gray-100 rounded-lg p-4 mb-6">
           <h3 className="text-sm font-semibold text-gray-800 mb-3">Verificación de datos del estudio</h3>
           <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
@@ -90,15 +95,15 @@ export const UploadResultModal = ({ isOpen, onClose, study, onUpload }: UploadRe
             </div>
             <div>
               <p className="text-gray-500">Nutricionista</p>
-              <p className="font-medium text-gray-900">{study.assignedUser?.name || "Sin asignar"}</p>
+              <p className="font-medium text-gray-900">{study.nutritionist?.fullName || "Sin asignar"}</p>
             </div>
             <div>
               <p className="text-gray-500">Fecha del estudio</p>
-              <p className="font-medium text-gray-900">{new Date(study.createdAt).toLocaleDateString()}</p>
+              <p className="font-medium text-gray-900">{formatDate(study.studyDate || study.createdAt)}</p>
             </div>
           </div>
         </div>
-
+ 
         <div className="mb-6">
           <p className="text-sm font-semibold text-gray-800 mb-2">Archivo de resultados (JSON)</p>
           <div 
@@ -132,11 +137,11 @@ export const UploadResultModal = ({ isOpen, onClose, study, onUpload }: UploadRe
             )}
           </div>
         </div>
-
+ 
         <p className="text-xs text-gray-500 mb-6 leading-relaxed">
           Al confirmar, los resultados se vincularán permanentemente a la ficha del paciente creada por el nutricionista.
         </p>
-
+ 
         <div className="flex justify-end gap-3">
           <button 
             onClick={onClose}
