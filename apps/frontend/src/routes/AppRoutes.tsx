@@ -46,6 +46,16 @@ export const AppRoutes: React.FC = () => {
         }
       />
 
+      {/* Alias para verificación de email desde el backend */}
+      <Route
+        path="/auth/verify-email"
+        element={
+          <PublicRoute>
+            <RegisterComplete />
+          </PublicRoute>
+        }
+      />
+
       {/* Dashboard Nutricionista */}
       <Route
         path="/dashboardNutritionist"
