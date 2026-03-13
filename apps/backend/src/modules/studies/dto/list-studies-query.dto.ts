@@ -2,7 +2,6 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsDateString, IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 import { StudyStatus } from '../enums/study-status.enum';
-import { AiResult } from '../enums/ai-result.enum';
 
 export class ListStudiesQueryDto {
   @ApiPropertyOptional({ example: 'PCT-AR-56321' })
@@ -19,11 +18,6 @@ export class ListStudiesQueryDto {
   @IsOptional()
   @IsEnum(StudyStatus)
   status?: StudyStatus;
-
-  @ApiPropertyOptional({ enum: AiResult, example: AiResult.EQUILIBRADA })
-  @IsOptional()
-  @IsEnum(AiResult)
-  aiResult?: AiResult;
 
   @ApiPropertyOptional({ example: '2026-03-01' })
   @IsOptional()

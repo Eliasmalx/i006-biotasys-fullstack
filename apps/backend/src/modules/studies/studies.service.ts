@@ -28,7 +28,6 @@ import { Study } from './entities/study.entity';
 import { StudyStatusHistory } from './entities/study-status-history.entity';
 import { StudyProcessingJob } from './entities/study-processing-job.entity';
 import { StudyCodeSequence } from './entities/study-code-sequence.entity';
-import { AiResult } from './enums/ai-result.enum';
 import { ProcessingJobStatus } from './enums/processing-job-status.enum';
 import { PatientSex } from './enums/patient-sex.enum';
 import { ProcessingState } from './enums/processing-state.enum';
@@ -132,7 +131,6 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       patientSex: dto.patientSex,
       studyDate: dto.studyDate,
       status: StudyStatus.SOLICITADO,
-      aiResult: AiResult.SIN_RESULTADO,
       processingState: ProcessingState.PENDING,
       requestedAt: now,
     });
@@ -811,10 +809,6 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       qb.andWhere('study.status = :status', { status: query.status });
     }
 
-    if (query.aiResult) {
-      qb.andWhere('study.aiResult = :aiResult', { aiResult: query.aiResult });
-    }
-
     if (query.dateFrom) {
       qb.andWhere('study.studyDate >= :dateFrom', { dateFrom: query.dateFrom });
     }
@@ -851,7 +845,6 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       patientSex: study.patientSex,
       studyDate: study.studyDate,
       status: study.status,
-      aiResult: study.aiResult,
       processingState: study.processingState,
       processingError: study.processingError,
       pdfUrl: study.pdfUrl,
