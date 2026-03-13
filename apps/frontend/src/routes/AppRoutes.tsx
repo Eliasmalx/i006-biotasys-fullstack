@@ -12,6 +12,7 @@ import { PasswordRecovery } from "../pages/login/PasswordRecovery";
 import { PasswordReset } from "../pages/login/PasswordReset";
 import { ForgotPassword } from "../pages/login/ForgotPassword";
 import { Navbar } from "../pages/Navbar";
+import RegisterComplete from "../pages/register/RegisterComplete";
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -32,6 +33,15 @@ export const AppRoutes: React.FC = () => {
         element={
           <PublicRoute>
             <RegisterPage />
+          </PublicRoute>
+        }
+      />
+
+      <Route
+        path="/register-complete"
+        element={
+          <PublicRoute>
+            <RegisterComplete />
           </PublicRoute>
         }
       />
