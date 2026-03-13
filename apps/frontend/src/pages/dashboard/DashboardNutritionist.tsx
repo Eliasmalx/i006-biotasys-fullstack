@@ -1,9 +1,8 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../services/api";
 import "./DashboardNutritionist.css";
 
-/* ---- Types ---- */
 type StudyStatus = "SOLICITADO" | "RECIBIDO" | "EN_ANALISIS" | "INFORME_LISTO" | "RECHAZADO";
 
 interface StudyRow {
@@ -15,9 +14,7 @@ interface StudyRow {
   studyDate: string;
   createdAt: string;
   status: StudyStatus;
-  processingState?: string;
-  assignee?: { id: string; fullName: string; email: string };
-  nutritionist?: { id: string; fullName: string; email: string };
+  assignee?: { id: string; fullName: string; email: string } | null;
 }
 
 interface PaginatedResponse {
@@ -28,8 +25,7 @@ interface PaginatedResponse {
   totalPages: number;
 }
 
-/* ---- Constants ---- */
-const STATUS_LABELS: Record<string, string> = {
+const STATUS_LABELS: Record<StudyStatus, string> = {
   SOLICITADO: "Solicitado",
   RECIBIDO: "Recibido",
   EN_ANALISIS: "En análisis",
@@ -37,18 +33,8 @@ const STATUS_LABELS: Record<string, string> = {
   RECHAZADO: "Rechazado",
 };
 
-const STATUS_OPTIONS = Object.entries(STATUS_LABELS);
-
-const RESULTADO_OPTIONS = [
-  { value: "EQUILIBRADA", label: "Equilibrada" },
-  { value: "ALTERADA", label: "Alterada" },
-  { value: "INCONCLUSA", label: "Inconclusa" },
-  { value: "CRITICA", label: "Crítica" },
-];
-
 const PAGE_SIZE = 10;
 
-/* ---- SVG Icons ---- */
 const SearchIcon = () => (
   <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
     <circle cx="7" cy="7" r="5.5" />
@@ -101,7 +87,6 @@ const PlusIcon = () => (
   </svg>
 );
 
-/* ---- Filter Dropdown Component ---- */
 function FilterDropdown({
   label,
   options,
@@ -117,14 +102,28 @@ function FilterDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
   const isActive = selected.length > 0;
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button
+        type="button"
         className={`dn-filter-btn ${isActive ? "dn-filter-btn--active" : ""}`}
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen((value) => !value)}
       >
         {icon}
         {label}
@@ -158,92 +157,82 @@ function FilterDropdown({
   );
 }
 
-/* ---- Main Component ---- */
 export const DashboardNutritionist = () => {
   const navigate = useNavigate();
-
-  // Data
   const [studies, setStudies] = useState<StudyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
-
-  // Filters
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-
-  // Lab options for filter
+  const [date, setDate] = useState("");
   const [labOptions, setLabOptions] = useState<{ value: string; label: string }[]>([]);
   const [labFilter, setLabFilter] = useState<string[]>([]);
 
-  // Load lab options
   useEffect(() => {
     const loadLabs = async () => {
       try {
         const labs = await api.listLaboratoryOptions();
         const uniqueLabs = new Map<string, string>();
-        labs.forEach((l) => {
-          const key = l.laboratory.trim().toLowerCase();
-          if (!uniqueLabs.has(key)) {
-            uniqueLabs.set(key, l.laboratory.trim());
+
+        labs.forEach((lab) => {
+          if (!uniqueLabs.has(lab.userId)) {
+            uniqueLabs.set(lab.userId, lab.laboratory || lab.fullName);
           }
         });
+
         setLabOptions(
-          Array.from(uniqueLabs.entries()).map(([key, label]) => ({
-            value: key,
-            label,
-          }))
+          Array.from(uniqueLabs.entries()).map(([value, label]) => ({ value, label }))
         );
       } catch {
-        // silently fail
+        setLabOptions([]);
       }
     };
+
     loadLabs();
   }, []);
 
-  // Load studies
   const loadStudies = useCallback(async () => {
     setLoading(true);
+
     try {
-      const params: Record<string, any> = {
+      const params: Record<string, string | number | undefined> = {
         page,
         limit: PAGE_SIZE,
+        search: search.trim() || undefined,
+        estado: statusFilter.length === 1 ? statusFilter[0] : undefined,
+        date: date || undefined,
       };
-      if (search.trim()) params.search = search.trim();
-      if (statusFilter.length === 1) params.status = statusFilter[0];
-      if (dateFrom) params.dateFrom = dateFrom;
-      if (dateTo) params.dateTo = dateTo;
 
-      const data: PaginatedResponse = await api.listNutritionistStudies(params);
+      const data = (await api.listNutritionistStudies(params)) as PaginatedResponse;
       setStudies(data.data || []);
       setTotal(data.total || 0);
       setTotalPages(data.totalPages || 1);
     } catch (err) {
       console.error("Error cargando estudios:", err);
       setStudies([]);
+      setTotal(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter, dateFrom, dateTo]);
+  }, [page, search, statusFilter, date]);
 
   useEffect(() => {
     loadStudies();
   }, [loadStudies]);
 
-  // Filter toggles
-  const toggleStatus = (val: string) => {
+  const toggleStatus = (value: string) => {
     setStatusFilter((prev) =>
-      prev.includes(val) ? prev.filter((v) => v !== val) : [...prev, val]
+      prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]
     );
     setPage(1);
   };
 
-  const toggleLab = (val: string) => {
+  const toggleLab = (value: string) => {
     setLabFilter((prev) =>
-      prev.includes(val) ? prev.filter((v) => v !== val) : [...prev, val]
+      prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]
     );
     setPage(1);
   };
@@ -252,86 +241,82 @@ export const DashboardNutritionist = () => {
     setSearch("");
     setStatusFilter([]);
     setLabFilter([]);
-    setDateFrom("");
-    setDateTo("");
+    setDate("");
     setPage(1);
   };
 
-  const hasActiveFilters = statusFilter.length > 0 || labFilter.length > 0 || dateFrom || dateTo;
+  const hasActiveFilters = statusFilter.length > 0 || labFilter.length > 0 || Boolean(date);
 
-  // Client-side lab filter (since API doesn't support multi-lab filter)
   const filteredStudies = useMemo(() => {
     if (labFilter.length === 0) return studies;
-    return studies.filter((s) => {
-      if (!s.assignee) return false;
-      // match against assignee's lab info in fullName or email
-      return labFilter.some((lf) => {
-        const assigneeName = (s.assignee?.fullName || "").toLowerCase();
-        const assigneeEmail = (s.assignee?.email || "").toLowerCase();
-        return assigneeName.includes(lf) || assigneeEmail.includes(lf);
-      });
-    });
+
+    return studies.filter((study) => study.assignee?.id && labFilter.includes(study.assignee.id));
   }, [studies, labFilter]);
 
-  // Active chips
   const chips: { label: string; onRemove: () => void }[] = [];
-  statusFilter.forEach((s) => {
+
+  statusFilter.forEach((status) => {
     chips.push({
-      label: STATUS_LABELS[s] || s,
-      onRemove: () => toggleStatus(s),
-    });
-  });
-  labFilter.forEach((l) => {
-    const opt = labOptions.find((o) => o.value === l);
-    chips.push({
-      label: opt?.label || l,
-      onRemove: () => toggleLab(l),
+      label: STATUS_LABELS[status as StudyStatus] || status,
+      onRemove: () => toggleStatus(status),
     });
   });
 
-  // Search on Enter
-  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+  labFilter.forEach((labId) => {
+    const option = labOptions.find((item) => item.value === labId);
+    chips.push({
+      label: option?.label || labId,
+      onRemove: () => toggleLab(labId),
+    });
+  });
+
+  const handleSearchKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === "Enter") {
       setPage(1);
       loadStudies();
     }
   };
 
-  // Format date
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "-";
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const parsed = new Date(dateStr);
+    if (Number.isNaN(parsed.getTime())) return dateStr;
+    return parsed.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
   };
 
-  // Sex abbreviation
   const formatSex = (sex: string) => {
     if (sex === "MASCULINO") return "M";
     if (sex === "FEMENINO") return "F";
     return sex;
   };
 
-  // Pagination numbers
   const paginationRange = useMemo(() => {
     const range: (number | "...")[] = [];
+
     if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) range.push(i);
-    } else {
-      range.push(1);
-      if (page > 3) range.push("...");
-      const start = Math.max(2, page - 1);
-      const end = Math.min(totalPages - 1, page + 1);
-      for (let i = start; i <= end; i++) range.push(i);
-      if (page < totalPages - 2) range.push("...");
-      range.push(totalPages);
+      for (let index = 1; index <= totalPages; index += 1) {
+        range.push(index);
+      }
+      return range;
     }
+
+    range.push(1);
+    if (page > 3) range.push("...");
+
+    const start = Math.max(2, page - 1);
+    const end = Math.min(totalPages - 1, page + 1);
+    for (let index = start; index <= end; index += 1) {
+      range.push(index);
+    }
+
+    if (page < totalPages - 2) range.push("...");
+    range.push(totalPages);
+
     return range;
   }, [page, totalPages]);
 
   return (
     <div className="dn-page">
-      {/* Header */}
       <div className="dn-header">
         <div>
           <h1 className="dn-header__title">Panel de estudios</h1>
@@ -339,13 +324,12 @@ export const DashboardNutritionist = () => {
             Gestión de estudios de microbiota y generación de informe con IA para apoyo en la decisión
           </p>
         </div>
-        <button className="dn-header__btn" onClick={() => navigate("/studies/new")}>
+        <button type="button" className="dn-header__btn" onClick={() => navigate("/studies/new")}>
           <PlusIcon />
           Nuevo estudio
         </button>
       </div>
 
-      {/* Filters */}
       <div className="dn-filters">
         <div className="dn-filters__bar">
           <div className="dn-filters__search">
@@ -355,18 +339,12 @@ export const DashboardNutritionist = () => {
               type="text"
               placeholder="Por paciente (PCT-...) o código de estudio (BIO-...)"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(event) => setSearch(event.target.value)}
               onKeyDown={handleSearchKeyDown}
             />
           </div>
 
           <div className="dn-filters__dropdowns">
-            <FilterDropdown
-              label="Resultado"
-              options={RESULTADO_OPTIONS}
-              selected={[]}
-              onToggle={() => {}}
-            />
             <FilterDropdown
               label="Laboratorio"
               options={labOptions}
@@ -375,26 +353,30 @@ export const DashboardNutritionist = () => {
             />
             <FilterDropdown
               label="Estado"
-              options={STATUS_OPTIONS.map(([value, label]) => ({ value, label }))}
+              options={Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))}
               selected={statusFilter}
               onToggle={toggleStatus}
             />
-            <div style={{ position: "relative" }}>
-              <button className="dn-filter-btn">
-                <CalendarIcon />
-                Fecha
-                <ChevronDown />
-              </button>
-            </div>
+            <label className="dn-filter-btn" style={{ gap: 8 }}>
+              <CalendarIcon />
+              <input
+                type="date"
+                value={date}
+                onChange={(event) => {
+                  setDate(event.target.value);
+                  setPage(1);
+                }}
+                style={{ border: "none", background: "transparent", color: "inherit", font: "inherit", outline: "none", minWidth: 110 }}
+              />
+            </label>
           </div>
         </div>
       </div>
 
-      {/* Active Chips */}
       {(chips.length > 0 || hasActiveFilters) && (
         <div className="dn-chips">
-          {chips.map((chip, i) => (
-            <span key={i} className="dn-chip">
+          {chips.map((chip, index) => (
+            <span key={`${chip.label}-${index}`} className="dn-chip">
               {chip.label}
               <span className="dn-chip__remove" onClick={chip.onRemove}>
                 <CloseIcon />
@@ -402,7 +384,7 @@ export const DashboardNutritionist = () => {
             </span>
           ))}
           {hasActiveFilters && (
-            <button className="dn-chips__reset" onClick={resetFilters}>
+            <button type="button" className="dn-chips__reset" onClick={resetFilters}>
               <ResetIcon />
               Restablecer filtros
             </button>
@@ -410,7 +392,6 @@ export const DashboardNutritionist = () => {
         </div>
       )}
 
-      {/* Table */}
       <div className="dn-table-wrap">
         <div className="dn-table-container">
           <table className="dn-table">
@@ -422,21 +403,20 @@ export const DashboardNutritionist = () => {
                 <th>Análisis</th>
                 <th>Laboratorio</th>
                 <th>Estado</th>
-                <th>Resultado IA</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="dn-loading">Cargando estudios...</td>
+                  <td colSpan={7} className="dn-loading">Cargando estudios...</td>
                 </tr>
               ) : filteredStudies.length === 0 ? (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={7}>
                     <div className="dn-empty">
                       <p className="dn-empty__title">No hay estudios disponibles</p>
-                      <p className="dn-empty__text">Crea un nuevo estudio para comenzar</p>
+                      <p className="dn-empty__text">Ajusta los filtros o crea un nuevo estudio para comenzar</p>
                     </div>
                   </td>
                 </tr>
@@ -448,11 +428,9 @@ export const DashboardNutritionist = () => {
                       <span className="dn-table__study-code">{row.studyCode}</span>
                     </td>
                     <td>{row.patientAge} años · {formatSex(row.patientSex)}</td>
-                    <td>{formatDate(row.studyDate)}</td>
+                    <td>{formatDate(row.studyDate || row.createdAt)}</td>
                     <td>
-                      <span className="dn-table__lab-name">
-                        {row.assignee?.fullName || "-"}
-                      </span>
+                      <span className="dn-table__lab-name">{row.assignee?.fullName || "-"}</span>
                     </td>
                     <td>
                       <span className={`dn-status dn-status--${row.status.toLowerCase()}`}>
@@ -462,23 +440,17 @@ export const DashboardNutritionist = () => {
                     </td>
                     <td>
                       {row.status === "INFORME_LISTO" ? (
-                        <span className="dn-badge dn-badge--equilibrada">
-                          equilibrada
-                        </span>
-                      ) : (
-                        <span className="dn-badge--none">-</span>
-                      )}
-                    </td>
-                    <td>
-                      {row.status === "INFORME_LISTO" ? (
                         <button
+                          type="button"
                           className="dn-action-btn"
                           onClick={() => navigate(`/studies/${row.id}/report`)}
                           title="Ver informe"
                         >
                           <ArrowIcon />
                         </button>
-                      ) : null}
+                      ) : (
+                        <span className="dn-badge--none">-</span>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -488,10 +460,10 @@ export const DashboardNutritionist = () => {
         </div>
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="dn-pagination">
           <button
+            type="button"
             className="dn-pagination__btn dn-pagination__edge"
             disabled={page === 1}
             onClick={() => setPage(1)}
@@ -499,18 +471,20 @@ export const DashboardNutritionist = () => {
             «
           </button>
           <button
+            type="button"
             className="dn-pagination__btn"
             disabled={page === 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
           >
             ‹
           </button>
 
-          {paginationRange.map((item, i) =>
+          {paginationRange.map((item, index) =>
             item === "..." ? (
-              <span key={`e-${i}`} className="dn-pagination__ellipsis">…</span>
+              <span key={`ellipsis-${index}`} className="dn-pagination__ellipsis">…</span>
             ) : (
               <button
+                type="button"
                 key={item}
                 className={`dn-pagination__btn ${page === item ? "dn-pagination__btn--active" : ""}`}
                 onClick={() => setPage(item as number)}
@@ -521,13 +495,15 @@ export const DashboardNutritionist = () => {
           )}
 
           <button
+            type="button"
             className="dn-pagination__btn"
             disabled={page === totalPages}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
           >
             ›
           </button>
           <button
+            type="button"
             className="dn-pagination__btn dn-pagination__edge"
             disabled={page === totalPages}
             onClick={() => setPage(totalPages)}
