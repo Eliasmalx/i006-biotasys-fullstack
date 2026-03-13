@@ -2,7 +2,7 @@ import { User } from "../types";
 import { API_ENDPOINTS } from "../constants/routes";
 
 function authHeaders() {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("example_token");
   return {
     "Content-Type": "application/json",
     "Authorization": `Bearer ${token}`,
