@@ -3,6 +3,7 @@ import { api } from "../../services/api";
 import { UploadResultModal } from "../../modal/UploadResultModal";
 import "./DashboardNutritionist.css";
 
+
 type OrderStatus = "SOLICITADO" | "RECIBIDO" | "EN_ANALISIS" | "INFORME_LISTO" | "RECHAZADO";
 
 export interface StudyRow {
@@ -158,7 +159,7 @@ export const DashboardLaboratory = () => {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [date, setDate] = useState("");
 
-  
+
   // Modal de carga de resultados
   const [selectedStudy, setSelectedStudy] = useState<StudyRow | null>(null);
 
@@ -221,13 +222,14 @@ export const DashboardLaboratory = () => {
   // Función para manejar la carga a la API
   const handleUploadFile = async (file: File) => {
     if (!selectedStudy) return;
-    
+
     try {
       const formData = new FormData();
       formData.append("file", file);
+
+      await api.uploadStudyJson(selectedStudy.id, formData);
       
-      // await api.uploadStudyResults(selectedStudy.id, formData);
-      
+
       alert("Resultados cargados exitosamente");
       setSelectedStudy(null); // Cierra el modal
       loadOrders(); // Recarga la tabla para actualizar el estado a RECIBIDO/EN_ANALISIS
@@ -448,14 +450,14 @@ export const DashboardLaboratory = () => {
             {totalPages} »
           </button>
 
-          <UploadResultModal
+        </div>
+      )}
+      <UploadResultModal
         isOpen={selectedStudy !== null}
         onClose={() => setSelectedStudy(null)}
         study={selectedStudy}
         onUpload={handleUploadFile}
       />
-        </div>
-      )}
     </div>
   );
 };
