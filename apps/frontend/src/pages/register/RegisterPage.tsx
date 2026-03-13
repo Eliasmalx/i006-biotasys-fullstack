@@ -44,14 +44,8 @@ export const RegisterPage: React.FC = () => {
       setServerError(null);
 
       try {
-        // Split fullName into firstName + lastName
-        const parts = fullName.trim().split(/\s+/);
-        const firstName = parts[0] || '';
-        const lastName = parts.slice(1).join(' ') || '';
-
         await api.register({
-          firstName,
-          lastName,
+          fullName: fullName.trim(),
           email: email.trim().toLowerCase(),
           password: pwd,
           laboratory: laboratory.trim() || undefined,

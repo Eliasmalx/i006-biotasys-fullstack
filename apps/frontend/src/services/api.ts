@@ -14,9 +14,12 @@ export const api = {
      AUTH
   ------------------------------------------------------- */
 
+  /**
+   * Register a new user.
+   * Matches backend CreateUserDto: { fullName, email, password, laboratory? }
+   */
   async register(data: {
-    firstName: string;
-    lastName: string;
+    fullName: string;
     email: string;
     password: string;
     laboratory?: string;
@@ -35,43 +38,38 @@ export const api = {
   },
 
   async login(data: any): Promise<{ user: User; accessToken: string; refreshToken: string }> {
-  const response = await fetch(
-    `${API_ENDPOINTS.BASE}${API_ENDPOINTS.AUTH.LOGIN}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+    const response = await fetch(
+      `${API_ENDPOINTS.BASE}${API_ENDPOINTS.AUTH.LOGIN}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }
+    );
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || "Login failed");
     }
-  );
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.message || "Login failed");
-  }
-
-  return result; 
-},
-
+    return result;
+  },
 
   async logout(data: { refreshToken: string }): Promise<{ message: string }> {
-  const response = await fetch(
-    `${API_ENDPOINTS.BASE}${API_ENDPOINTS.AUTH.LOGOUT}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+    const response = await fetch(
+      `${API_ENDPOINTS.BASE}${API_ENDPOINTS.AUTH.LOGOUT}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }
+    );
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || "Error al cerrar sesión");
     }
-  );
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.message || "Error al cerrar sesión");
-  }
-
-  return result;
-},
+    return result;
+  },
 
   async verifyEmail(token: string): Promise<{ message: string }> {
     const response = await fetch(
@@ -83,14 +81,11 @@ export const api = {
     );
 
     const result = await response.json();
-
     if (!response.ok) {
       throw new Error(result.message || "Error al verificar el email");
     }
-
     return result;
   },
-
 
   async checkHealth(): Promise<boolean> {
     try {

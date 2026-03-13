@@ -5,7 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 interface ProtectedRouteProps {
   children: React.ReactNode;
   redirectTo?: string;
-  role?: "NUTRICIONISTA" | "LABORATORIO"; // ← AÑADIDO
+  role?: string;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
@@ -26,13 +26,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // Si no está autenticado → login
   if (!isAuthenticated || !user) {
     return <Navigate to={redirectTo} replace />;
   }
 
-  // Si la ruta requiere un rol y el usuario no lo tiene → login
-  if (role && user.role !== role) {
+  // Case-insensitive role comparison
+  if (role && user.role?.toLowerCase() !== role.toLowerCase()) {
     return <Navigate to={redirectTo} replace />;
   }
 
@@ -40,4 +39,3 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 };
 
 export default ProtectedRoute;
-

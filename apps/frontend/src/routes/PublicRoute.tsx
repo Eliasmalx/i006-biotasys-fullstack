@@ -1,17 +1,19 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import React from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
-interface PublicRouteProps {
+interface ProtectedRouteProps {
   children: React.ReactNode;
   redirectTo?: string;
+  role?: string;
 }
 
-export const PublicRoute: React.FC<PublicRouteProps> = ({ 
-  children, 
-  redirectTo = '/dashboard' 
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  redirectTo = "/login",
+  role,
 }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (
@@ -24,7 +26,15 @@ export const PublicRoute: React.FC<PublicRouteProps> = ({
     );
   }
 
-  return !isAuthenticated ? <>{children}</> : <Navigate to={redirectTo} replace />;
+  if (!isAuthenticated || !user) {
+    return <Navigate to={redirectTo} replace />;
+  }
+
+  if (role && user.role?.toLowerCase() !== role.toLowerCase()) {
+    return <Navigate to={redirectTo} replace />;
+  }
+
+  return <>{children}</>;
 };
 
-export default PublicRoute;
+export default ProtectedRoute;
