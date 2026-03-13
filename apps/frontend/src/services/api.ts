@@ -166,7 +166,7 @@ export const api = {
       page: String(params.page ?? 1),
       limit: String(params.limit ?? 20),
       ...(params.search ? { search: params.search } : {}),
-      ...(params.estado ? { estado: params.estado } : {}),
+      ...(params.estado ? { status: params.estado } : {}),
       ...(params.date ? { date: params.date } : {}),
     });
 

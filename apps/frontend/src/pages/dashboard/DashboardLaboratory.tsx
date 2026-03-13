@@ -7,39 +7,53 @@ interface StudyRow {
   id: string;
   patientCode: string;
   studyCode: string;
-  assignedUser?: { name: string };
   createdAt: string;
+  studyDate: string;
   status: OrderStatus;
+  nutritionist?: {
+    id: string;
+    fullName: string;
+    email: string;
+    role: string | null;
+  } | null;
+}
+
+interface OrdersResponse {
+  data: StudyRow[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
 export const DashboardLaboratory = () => {
   const [orders, setOrders] = useState<StudyRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filtros
   const [search, setSearch] = useState("");
   const [estado, setEstado] = useState("");
   const [date, setDate] = useState("");
 
-  // Paginación
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
   const loadOrders = async () => {
     setLoading(true);
     try {
-      const data = await api.listLaboratoryOrders({
+      const data = (await api.listLaboratoryOrders({
         page,
         limit: 10,
-        search,
-        estado,
-        date,
-      });
+        search: search || undefined,
+        estado: estado || undefined,
+        date: date || undefined,
+      })) as OrdersResponse;
 
-      setOrders(data.items);
-      setTotal(data.total);
+      setOrders(data.data ?? []);
+      setTotal(data.total ?? 0);
     } catch (err) {
       console.error("Error cargando órdenes:", err);
+      setOrders([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -54,7 +68,6 @@ export const DashboardLaboratory = () => {
     setEstado("");
     setDate("");
     setPage(1);
-    loadOrders();
   };
 
   return (
@@ -64,11 +77,10 @@ export const DashboardLaboratory = () => {
         Gestión de estudios de microbiota para integración clínica
       </p>
 
-      {/* Search + Filters */}
       <div className="flex items-center justify-between gap-4 mb-6">
         <input
           type="text"
-          placeholder="Por paciente (PCT-...), código de estudio (BIO-...), código de origen (LAB-...)"
+          placeholder="Por paciente (PCT-...), código de estudio (BIO-...)"
           className="flex-1 max-w-md border border-gray-300 rounded-lg px-4 py-2 shadow-sm text-gray-800 bg-white"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -107,7 +119,6 @@ export const DashboardLaboratory = () => {
         </div>
       </div>
 
-      {/* Table */}
       <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm bg-white">
         <table className="w-full text-left">
           <thead className="bg-gray-100 text-gray-700">
@@ -139,9 +150,9 @@ export const DashboardLaboratory = () => {
                 <tr key={row.id} className="border-t">
                   <td className="px-4 py-3">{row.patientCode}</td>
                   <td className="px-4 py-3">{row.studyCode}</td>
-                  <td className="px-4 py-3">{row.assignedUser?.name || "-"}</td>
+                  <td className="px-4 py-3">{row.nutritionist?.fullName || "-"}</td>
                   <td className="px-4 py-3">
-                    {new Date(row.createdAt).toLocaleDateString()}
+                    {new Date(row.studyDate || row.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3">{row.status}</td>
                   <td className="px-4 py-3">
@@ -160,7 +171,6 @@ export const DashboardLaboratory = () => {
         </table>
       </div>
 
-      {/* Pagination */}
       <div className="flex justify-center items-center gap-3 mt-6 text-gray-700">
         <button
           className="px-2"
@@ -185,5 +195,3 @@ export const DashboardLaboratory = () => {
     </div>
   );
 };
-
-
