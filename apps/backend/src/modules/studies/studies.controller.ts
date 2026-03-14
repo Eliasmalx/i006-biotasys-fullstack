@@ -148,7 +148,8 @@ export class StudiesController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Marcar orden como recibida',
-    description: 'Transiciona el estudio de SOLICITADO a RECIBIDO',
+    description:
+      'Transiciona el estudio de SOLICITADO o RECHAZADO a RECIBIDO',
   })
   @ApiResponse({
     status: 200,

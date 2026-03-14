@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../services/api";
 import { UploadResultModal } from "../../modal/UploadResultModal";
 import "./DashboardNutritionist.css";
@@ -159,8 +159,6 @@ export const DashboardLaboratory = () => {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [date, setDate] = useState("");
 
-
-  // Modal de carga de resultados
   const [selectedStudy, setSelectedStudy] = useState<StudyRow | null>(null);
 
   const loadOrders = async () => {
@@ -219,23 +217,61 @@ export const DashboardLaboratory = () => {
     }
   };
 
-  // Función para manejar la carga a la API
+  const buildUploadPayload = (parsed: unknown) => {
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("El archivo no contiene un objeto JSON válido");
+    }
+
+    const payload = parsed as Record<string, unknown>;
+
+    if (payload.raw_json && typeof payload.raw_json === "object" && !Array.isArray(payload.raw_json)) {
+      return { raw_json: payload.raw_json };
+    }
+
+    if (payload.rawJson && typeof payload.rawJson === "object" && !Array.isArray(payload.rawJson)) {
+      return { rawJson: payload.rawJson };
+    }
+
+    return { raw_json: payload };
+  };
+
+  const handleOpenUploadModal = async (row: StudyRow) => {
+    try {
+      if (row.status === "SOLICITADO" || row.status === "RECHAZADO") {
+        await api.markAsReceived(row.id);
+        setSelectedStudy({ ...row, status: "RECIBIDO" });
+        await loadOrders();
+        return;
+      }
+
+      setSelectedStudy(row);
+    } catch (err) {
+      console.error("Error al marcar el estudio como recibido:", err);
+      alert(err instanceof Error ? err.message : "No se pudo marcar el estudio como recibido");
+    }
+  };
+
   const handleUploadFile = async (file: File) => {
     if (!selectedStudy) return;
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const payload = buildUploadPayload(parsed);
 
-      await api.uploadStudyJson(selectedStudy.id, formData);
-      
+      await api.uploadStudyJson(selectedStudy.id, payload);
 
       alert("Resultados cargados exitosamente");
-      setSelectedStudy(null); // Cierra el modal
-      loadOrders(); // Recarga la tabla para actualizar el estado a RECIBIDO/EN_ANALISIS
+      setSelectedStudy(null);
+      await loadOrders();
     } catch (err) {
       console.error("Error al cargar resultados:", err);
-      alert("Ocurrió un error al subir el archivo");
+      const message = err instanceof SyntaxError
+        ? "El archivo no contiene un JSON válido"
+        : err instanceof Error
+          ? err.message
+          : "Ocurrió un error al subir el archivo";
+      alert(message);
     }
   };
 
@@ -383,8 +419,8 @@ export const DashboardLaboratory = () => {
                       </span>
                     </td>
                     <td>
-                      {["SOLICITADO", "RECIBIDO"].includes(row.status) ? (
-                        <button type="button" className="dn-action-link" onClick={() => setSelectedStudy(row)}>
+                      {["SOLICITADO", "RECIBIDO", "RECHAZADO"].includes(row.status) ? (
+                        <button type="button" className="dn-action-link" onClick={() => handleOpenUploadModal(row)}>
                           Cargar archivo
                         </button>
                       ) : (
@@ -461,3 +497,6 @@ export const DashboardLaboratory = () => {
     </div>
   );
 };
+
+
+
