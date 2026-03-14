@@ -233,15 +233,19 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
   ): Promise<StudyResponseDto> {
     const study = await this.getLaboratoryStudyOrFail(studyId, currentUser);
 
-    if (study.status !== StudyStatus.SOLICITADO) {
+    if (
+      ![StudyStatus.SOLICITADO, StudyStatus.RECHAZADO].includes(study.status)
+    ) {
       throw new ConflictException(
-        'Solo se puede marcar como recibido un estudio solicitado',
+        'Solo se puede marcar como recibido un estudio solicitado o rechazado',
       );
     }
 
     const fromStatus = study.status;
     study.status = StudyStatus.RECIBIDO;
     study.receivedAt = new Date();
+    study.rejectionReason = null;
+    study.rejectedAt = null;
 
     const saved = await this.studyRepository.save(study);
     await this.createStatusHistory({
@@ -249,7 +253,10 @@ export class StudiesService implements OnModuleInit, OnModuleDestroy {
       fromStatus,
       toStatus: saved.status,
       changedByUserId: currentUser.userId,
-      note: 'Orden recibida por laboratorio',
+      note:
+        fromStatus === StudyStatus.RECHAZADO
+          ? 'Orden reabierta y recibida por laboratorio'
+          : 'Orden recibida por laboratorio',
     });
 
     return this.toStudyResponse(saved, true);
