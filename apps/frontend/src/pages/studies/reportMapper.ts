@@ -9,6 +9,7 @@
   status: string;
   pdfUrl?: string | null;
   normalizedJson?: any;
+  rawJson?: any;
 }
 
 export interface ReportMetricGauge {
@@ -113,52 +114,62 @@ const deriveHeroStatus = (
   globalIndicator: string,
   riskScore: number | null,
   tags: string[],
+  chronicSignals: string[],
 ): ReportHeroStatus => {
-  const normalizedText = stripDiacritics([globalIndicator, ...tags].join(" ").toLowerCase());
+  const normalizedIndicator = stripDiacritics(globalIndicator.toLowerCase());
+  const normalizedTags = tags.map((tag) => stripDiacritics(String(tag).toLowerCase()));
+  const normalizedChronicSignals = chronicSignals.map((signal) => stripDiacritics(String(signal).toLowerCase()));
+  const includesAny = (value: string, terms: string[]) => terms.some((term) => value.includes(term));
+  const tagsIncludeAny = (terms: string[]) => normalizedTags.some((tag) => includesAny(tag, terms));
+  const chronicSignalsIncludeAny = (terms: string[]) => normalizedChronicSignals.some((signal) => includesAny(signal, terms));
 
-  if (
-    normalizedText.includes("inconclus") ||
-    normalizedText.includes("insuficiente") ||
-    normalizedText.includes("no concluyente") ||
-    normalizedText.includes("analisis limitado")
-  ) {
-    return "inconclusive";
+  if (includesAny(normalizedIndicator, ['cronica', 'cronico'])) {
+    return 'chronic';
+  }
+
+  if (includesAny(normalizedIndicator, ['inconclus', 'insuficiente'])) {
+    return 'inconclusive';
+  }
+
+  if (includesAny(normalizedIndicator, ['equilibrada', 'equilibrado'])) {
+    return 'balanced';
+  }
+
+  if (includesAny(normalizedIndicator, ['alterada', 'alterado', 'disbiosis'])) {
+    return 'altered';
+  }
+
+  if (tagsIncludeAny(['datos insuficientes', 'analisis inconcluso', 'analisis no concluyente', 'inconclus'])) {
+    return 'inconclusive';
+  }
+
+  if (tagsIncludeAny(['cronica', 'cronico'])) {
+    return 'chronic';
   }
 
   if (
-    normalizedText.includes("cronica") ||
-    normalizedText.includes("cronico") ||
-    normalizedText.includes("persistente")
+    riskScore !== null &&
+    riskScore >= 85 &&
+    chronicSignalsIncludeAny(['cronica', 'cronico', 'persistente', 'sostenida', 'sostenido', 'chronic'])
   ) {
-    return "chronic";
+    return 'chronic';
   }
 
-  if (
-    normalizedText.includes("optimo") ||
-    normalizedText.includes("salud") ||
-    normalizedText.includes("equilibr") ||
-    normalizedText.includes("eubiosis")
-  ) {
-    return "balanced";
+  if (tagsIncludeAny(['disbiosis', 'alter', 'desequilibrio'])) {
+    return 'altered';
   }
 
-  if (
-    normalizedText.includes("alter") ||
-    normalizedText.includes("disbios") ||
-    normalizedText.includes("riesgo") ||
-    normalizedText.includes("desequilibrio") ||
-    normalizedText.includes("mejora urgente")
-  ) {
-    return "altered";
+  if (tagsIncludeAny(['microbiota saludable', 'saludable', 'eubiosis'])) {
+    return 'balanced';
   }
 
   if (riskScore !== null) {
-    if (riskScore <= 33) return "balanced";
-    if (riskScore <= 66) return "altered";
-    return "chronic";
+    if (riskScore <= 30) return 'balanced';
+    if (riskScore >= 70) return 'altered';
+    return 'altered';
   }
 
-  return "inconclusive";
+  return 'altered';
 };
 
 const statusLabelMap: Record<ReportHeroStatus, string> = {
@@ -188,6 +199,16 @@ const formatProfile = (age?: number | null, sex?: string | null) => {
   return parts.length ? parts.join(" · ") : null;
 };
 
+
+const resolveDiversityMetric = (normalizedValue: unknown, rawValue: unknown) => {
+  const normalizedNumber = numberValue(normalizedValue);
+  const rawNumber = numberValue(rawValue);
+
+  if (normalizedNumber !== null && normalizedNumber > 0) return normalizedNumber;
+  if (rawNumber !== null) return rawNumber;
+  if (normalizedNumber !== null) return normalizedNumber;
+  return null;
+};
 export const mapStudyToReportView = (study: ReportStudy): ReportViewModel => {
   const normalized = study.normalizedJson ?? {};
   const interpretation = normalized.interpretation ?? {};
@@ -204,11 +225,25 @@ export const mapStudyToReportView = (study: ReportStudy): ReportViewModel => {
     : [];
   const fallbackFunctionality = normalized.data?.functionality ?? {};
   const diversity = normalized.data?.diversity ?? {};
+  const rawDiversity = study.rawJson?.diversity ?? {};
 
   const riskScore = numberValue(finalObservations.risk_score);
   const conclusionTags = Array.isArray(finalObservations.conclusion_tags) ? finalObservations.conclusion_tags : [];
   const summaryTags = Array.isArray(generalSummary.summary_tags) ? generalSummary.summary_tags : [];
-  const heroStatus = deriveHeroStatus(finalObservations.global_indicator || "", riskScore, [...conclusionTags, ...summaryTags]);
+  const rawOpportunisticNotes = Array.isArray(study.rawJson?.functionality?.opportunistic_microorganisms)
+    ? study.rawJson.functionality.opportunistic_microorganisms.map((item: any) => item?.note).filter(Boolean)
+    : [];
+  const chronicSignals = [
+    study.rawJson?.clinical_context?.inflammatory_markers,
+    study.rawJson?.clinical_context?.lab_observations,
+    ...rawOpportunisticNotes,
+  ].filter(Boolean);
+  const heroStatus = deriveHeroStatus(
+    finalObservations.global_indicator || "",
+    riskScore,
+    [...conclusionTags, ...summaryTags],
+    chronicSignals,
+  );
 
   const compositionRows = bacterialComposition.length
     ? bacterialComposition.map((item: any) => ({
@@ -248,7 +283,10 @@ export const mapStudyToReportView = (study: ReportStudy): ReportViewModel => {
         });
 
   const fbRatio = formatMetric(generalSummary.firmicutes_bacteroidetes_ratio ?? normalized.data?.taxonomy?.firmicutes_bacteroidetes_ratio);
-  const shannon = formatMetric(generalSummary.shannon_index ?? diversity.shannon_index);
+  const resolvedShannon = resolveDiversityMetric(generalSummary.shannon_index ?? diversity.shannon_index, rawDiversity.shannon_index);
+  const resolvedOtus = resolveDiversityMetric(diversity.observed_otus, rawDiversity.observed_species ?? rawDiversity.observed_otus);
+  const resolvedSimpson = resolveDiversityMetric(diversity.simpson_index, rawDiversity.simpson_index);
+  const shannon = formatMetric(resolvedShannon);
 
   return {
     header: {
@@ -284,13 +322,13 @@ export const mapStudyToReportView = (study: ReportStudy): ReportViewModel => {
           label: "Índice Shannon",
           value: shannon,
           caption: generalSummary.shannon_range || "Diversidad",
-          percent: clamp(((numberValue(generalSummary.shannon_index) ?? 0) / 5) * 100),
+          percent: clamp(((resolvedShannon ?? 0) / 5) * 100),
         },
       ],
       secondaryStats: [
         { label: "Risk score", value: formatMetric(riskScore) },
-        { label: "OTUs observados", value: formatMetric(diversity.observed_otus) },
-        { label: "Índice Simpson", value: formatMetric(diversity.simpson_index) },
+        { label: "OTUs observados", value: formatMetric(resolvedOtus) },
+        { label: "Índice Simpson", value: formatMetric(resolvedSimpson) },
       ],
     },
     compositionRows,
@@ -325,3 +363,16 @@ export const mapStudyToReportView = (study: ReportStudy): ReportViewModel => {
     pdfUrl: study.pdfUrl ?? null,
   };
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
