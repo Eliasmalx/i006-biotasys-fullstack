@@ -1,28 +1,39 @@
-# 🚀 Template Fullstack: React + Node.js
+## 🧬 Biotasys – Plataforma de Análisis de Microbiota
+Biotasys es una aplicación fullstack para gestionar, interpretar y visualizar datos de microbiota, diseñada para que profesionales de la salud y usuarios técnicos puedan transformar resultados crudos en información clínicamente accionable.
+​
+La plataforma integra un frontend moderno con un backend API que centraliza autenticación, gestión de usuarios y manejo de informes.
 
-¡Bienvenido! Este es un proyecto template fullstack diseñado para desarrolladores junior que quieren aprender cómo construir aplicaciones web modernas con React y Node.js.
+## 🌟 Características principales
+- Panel de control con visión general de pacientes, informes y estado del sistema.
+- Autenticación de usuarios con sesiones protegidas y rutas privadas en el frontend.
+​- Gestión de informes: carga, listado y consulta de resultados de microbiota (estructurado para integrarse con tu flujo de PDFs o JSONs).
+​- UI responsiva pensada para uso en escritorio y tablet, con estilos basados en Tailwind CSS.
+- Backend en Node.js + Express preparado para integrarse con una base de datos real y servicios externos.
 
-## 📋 Descripción del Proyecto
+## 🖼 Vista previa de la aplicación
+### Pantalla Login
+<img width="1918" height="867" alt="image" src="https://github.com/user-attachments/assets/9a2878bd-b3fc-4f82-ab2f-25e04347b823" />
 
-Esta es una aplicación de autenticación completa con:
+### Dashboard Nutrisionista
+<img width="1910" height="866" alt="image" src="https://github.com/user-attachments/assets/e4d2767c-c406-4397-8779-5268286e1feb" />
 
-- **Frontend**: React + TypeScript + Vite + Tailwind CSS
-- **Backend**: Node.js + Express + JavaScript
-- **Autenticación**: Sistema de login y registro
-- **UI/UX**: Diseño moderno y responsivo
+### Modal Para Solicitud de resultados en Dashboard Laboratorio
+<img width="1918" height="865" alt="image" src="https://github.com/user-attachments/assets/501eab07-686a-4a23-903e-593e59a26a83" />
 
-## 🗂️ Estructura del Proyecto
+
+
+## 🧱 Arquitectura del proyecto
 
 ```
-template-react-node-fullstack/
+i006-biotasys-fullstack/
 ├── apps/
-│   ├── backend/          # Servidor Node.js
+│   ├── backend/          # API Node.js (Express)
 │   │   ├── src/
 │   │   │   ├── controllers/
 │   │   │   ├── services/
 │   │   │   ├── routes/
 │   │   │   └── middleware/
-│   │   ├── server.js     # Punto de entrada
+│   │   ├── server.js     # Punto de entrada del servidor
 │   │   └── package.json
 │   └── frontend/         # Aplicación React
 │       ├── src/
@@ -34,25 +45,21 @@ template-react-node-fullstack/
 │       ├── index.html
 │       └── package.json
 └── README.md
+
 ```
 
-## 🛠️ Tecnologías Utilizadas
-
+## 🛠 Tecnologías utilizadas
 ### Frontend
-
-- **React 19**: Biblioteca principal de UI
-- **TypeScript**: Tipado estático
-- **Vite**: Herramienta de build y desarrollo
-- **React Router**: Manejo de rutas
-- **Tailwind CSS**: Framework de CSS
-- **pnpm**: Gestor de paquetes
+- **React + TypeScript** como base del cliente.
+- **Vite** para desarrollo rápido y build optimizado.
+- ​**React Router** para la navegación entre login, dashboard e informes.
+- ​**Tailwind CSS** para estilos utilitarios y diseño responsivo.
+- **pnpm** como gestor de paquetes recomendado.​
 
 ### Backend
-
-- **Node.js**: Runtime de JavaScript
-- **Express**: Framework web
-- **CORS**: Middleware para cross-origin
-- **body-parser**: Middleware para parsear JSON
+- **Node.js** como runtime principal.
+- **Express** como framework HTTP para crear la API REST.
+- **CORS y body-parser** para manejar peticiones desde el frontend y parseo de JSON.
 
 ## � Docker (Opcional)
 
@@ -122,89 +129,38 @@ pnpm run dev
 # → Corre en http://localhost:5173
 ```
 
-## 📚 Guía para Desarrolladores Junior
+### 🌐 Endpoints Principales
+### Auth
+- /auth/login (Autentica un usuario con email, contraseña y rol.)
+- /auth/logout/ (Revoca el token)
+- /auth/forgot-password (solicita nueva contraseña)
+- 
+### Users
+- /users  (Post Registrar nuevos usuarios)
+- /users (Get* obtiene lista de usuarios)
+- /users/verify-email
+- /users/{id} (Obtiene usuario)
+- 
+### Estudios
+- /studies (POST Crear estudio)
+- /studies (Obtener estudio)
+- /studies/{id}/start-analysis
+- /studies/{id}/upload-json ( Cargar estudio)
 
-### ¿Cómo funciona la aplicación?
+## 🧩 Flujo de autenticación y acceso
+- El usuario accede a la pantalla de login desde el frontend.
+- El formulario envía las credenciales al backend, que valida y responde con un token mock (lista para sustituir por JWT real).
+- El frontend guarda el estado de sesión en un AuthProvider y protege las rutas sensibles (dashboard e informes).
 
-1. **Registro**: Los usuarios crean una cuenta con email y contraseña
-2. **Login**: Los usuarios inician sesión y reciben un token mock
-3. **Dashboard**: Vista protegida que muestra información del usuario
+```Usuario → Frontend → Backend → (base de datos/mock) → Backend → Frontend → Usuario```
 
-### Flujo de Autenticación
-
-```
-Usuario → Frontend → Backend → Base de datos (mock) → Backend → Frontend → Usuario
-```
-
-### Componentes Principales del Frontend
-
-- **AuthProvider**: Contexto de React para manejar el estado de autenticación
-- **Login/Register**: Formularios de autenticación
-- **Dashboard**: Página protegida
-- **Routes**: Configuración de rutas públicas y privadas
-
-### Endpoints del Backend
-
-- `POST /api/auth/register` - Registrar nuevo usuario
-- `POST /api/auth/login` - Iniciar sesión
-- `GET /api/health` - Verificar estado del servidor
-
-## ⚠️ **IMPORTANTE: Esto es solo una base**
-
-Este proyecto es un **template educativo**. Para producción necesitas implementar:
-
-### 🔐 Seguridad Real
-
-- [ ] **Base de datos real** (PostgreSQL, MongoDB, etc.)
-- [ ] **JWT tokens** válidos con expiración
-- [ ] **Hashing de contraseñas** (bcrypt)
-- [ ] **Variables de entorno** para secrets
-- [ ] **Validación de inputs** más robusta
-- [ ] **Rate limiting** para prevenir ataques
-
-### 🗄️ Base de Datos
-
-```javascript
-// Ejemplo de lo que necesitarías implementar:
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const { Pool } = require("pg");
-
-// Servicio de usuario real
-class UserService {
-  async create(userData) {
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
-    // Guardar en base de datos real
-  }
-
-  async authenticate(email, password) {
-    const user = await this.findByEmail(email);
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) throw new Error("Invalid credentials");
-    return user;
-  }
-}
-```
-
-### 🚀 Características Faltantes
-
-- [ ] **Recuperación de contraseña**
-- [ ] **Verificación de email**
-- [ ] **Perfil de usuario editable**
-- [ ] **Logout real** (invalidar tokens)
-- [ ] **Roles y permisos**
-- [ ] **Logs y auditoría**
-- [ ] **Tests unitarios y de integración**
-- [ ] **Dockerización**
-- [ ] **CI/CD pipeline**
-
-### 📊 Mejoras de Performance
-
-- [ ] **Caching** (Redis)
-- [ ] **CDN** para assets estáticos
-- [ ] **Lazy loading** de componentes
-- [ ] **Optimización de bundle**
-- [ ] **Service Worker** para PWA
+## 📌 Roadmap técnico
+- La base del proyecto está pensada para evolucionar hacia un entorno de producción para Biotasys:
+- Integración con base de datos real (PostgreSQL, MongoDB, etc.).​
+- Implementación de JWT con expiración y refresh tokens.
+- Hashing de contraseñas con bcrypt y variables de entorno para secrets.
+- Validación robusta de inputs (Joi/Zod) y sistema de roles y permisos para distintos tipos de usuarios.
+- Tests unitarios y de integración, logging, auditoría y CI/CD.
 
 ## 🐛 Problemas Comunes y Soluciones
 
@@ -223,33 +179,4 @@ npm install -g pnpm
 ```
 
 ### Error de CORS
-
 Asegúrate que el backend tenga el middleware CORS configurado.
-
-## 🎯 Próximos Pasos Recomendados
-
-1. **Aprender sobre bases de datos SQL/NoSQL**
-2. **Estudiar JWT y autenticación moderna**
-3. **Implementar validación con Joi/Zod**
-4. **Agregar tests con Jest/Vitest**
-5. **Configurar Docker**
-6. **Desplegar en producción (Vercel, Railway, etc.)**
-
-## 📖 Recursos de Aprendizaje
-
-- [React Documentation](https://react.dev/)
-- [Node.js Best Practices](https://github.com/goldbergyoni/nodebestpractices)
-- [Express.js Guide](https://expressjs.com/en/guide/)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
-
-## 🤝 Contribuciones
-
-¡Este es un proyecto educativo! Si encuentras errores o tienes sugerencias, siéntete libre de abrir un issue o hacer un pull request.
-
-## 📄 Licencia
-
-MIT License - puedes usar este proyecto para aprender y construir tus propias aplicaciones.
-
----
-
-**Recuerda**: Este es solo el comienzo. La programación web es un campo vasto y emocionante. ¡Sigue aprendiendo y construyendo! 🚀
